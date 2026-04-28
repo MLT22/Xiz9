@@ -1,0 +1,176 @@
+<!-- Teste 2 -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>XIZ9 — Post</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d0d0d;
+      --surface: #161616;
+      --border:  #2a2a2a;
+      --accent:  #c8f135;
+      --text:    #f0f0f0;
+      --muted:   #555;
+      --radius:  18px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2rem;
+      letter-spacing: -0.04em;
+      color: var(--accent);
+    }
+
+    .upload-card {
+      width: 340px;
+      background: var(--surface);
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .upload-card:hover { border-color: var(--accent); }
+
+    .drop-zone {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      background: #111;
+      transition: background .2s;
+    }
+    .drop-zone:hover { background: #181818; }
+
+    .drop-zone img.preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .plus-icon {
+      width: 64px;
+      height: 64px;
+      border: 2px solid var(--muted);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 2rem;
+      transition: border-color .2s, color .2s, transform .2s;
+      z-index: 1;
+    }
+    .drop-zone:hover .plus-icon {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: scale(1.08);
+    }
+
+    .drop-label {
+      margin-top: 12px;
+      font-size: .8rem;
+      color: var(--muted);
+      z-index: 1;
+    }
+
+    #fileInput { display: none; }
+
+    .card-footer {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .post-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: #0d0d0d;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: .95rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .post-btn:hover  { opacity: .88; }
+    .post-btn:active { transform: scale(.98); }
+    .post-btn:disabled { opacity: .35; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <h1>XIZ9</h1>
+
+  <div class="upload-card">
+    <div class="drop-zone" id="dropZone">
+      <div class="plus-icon">＋</div>
+      <span class="drop-label">Clique para adicionar uma imagem</span>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" />
+
+    <div class="card-footer">
+      <button class="post-btn" id="postBtn" disabled>Postar</button>
+    </div>
+  </div>
+
+  <script>
+    const dropZone  = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const postBtn   = document.getElementById("postBtn");
+
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const old = dropZone.querySelector("img.preview");
+        if (old) old.remove();
+
+        const img = document.createElement("img");
+        img.className = "preview";
+        img.src = ev.target.result;
+        dropZone.prepend(img);
+
+        dropZone.querySelector(".plus-icon").style.display = "none";
+        dropZone.querySelector(".drop-label").style.display = "none";
+      };
+      reader.readAsDataURL(file);
+
+      postBtn.disabled = false;
+    });
+
+    postBtn.addEventListener("click", () => {
+      alert("Imagem postada!");
+    });
+  </script>
+</body>
+</html>
