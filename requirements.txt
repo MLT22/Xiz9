@@ -2,3 +2,6 @@ fastapi
 uvicorn
 Pillow
 piexif
+numpy
+joblib
+scikit-learn

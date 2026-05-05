@@ -1,11 +1,15 @@
 import io
 import json
+import joblib
 import piexif
+import numpy as np
+from sklearn.decomposition import PCA
+from fastapi import UploadFile
 from PIL import Image, PngImagePlugin
 
 
-class ImageService:
-
+class BronzeService:
+    # Analise de metadados de imagens, incluindo EXIF, XMP e metadados específicos de PNG (comuns em IA)
     @staticmethod
     def extract_metadata(filename: str, content_type: str, contents: bytes) -> dict:
         try:
@@ -26,7 +30,7 @@ class ImageService:
             "aspect_ratio": round(width / height, 4) if height else None,
             "is_animated": getattr(image, "is_animated", False),
             "frames": getattr(image, "n_frames", 1),
-            "exif": ImageService._extract_all_metadata(image, contents),
+            "exif": BronzeService._extract_all_metadata(image, contents),
         }
 
         return metadata
@@ -78,5 +82,69 @@ class ImageService:
 
         return all_metadata
     
+    # Detecção de anomalias usando PCA
+
+    @staticmethod
+    def _extract_pca_features(image_bytes: bytes):
+        N_COMPONENTS = 50
+        RESIZE_TO = (256, 256)
+        img = Image.open(io.BytesIO(image_bytes)).convert("L").resize(RESIZE_TO)
+        matrix = np.array(img, dtype=np.float64) / 255.0
+
+        def _reconstruction_error(matrix, pca, scores, k):
+            scores_k = np.zeros_like(scores)
+            scores_k[:, :k] = scores[:, :k]
+            return float(np.mean((matrix - pca.inverse_transform(scores_k)) ** 2))
+
+        n = min(N_COMPONENTS, min(matrix.shape))
+        pca = PCA(n_components=n, svd_solver='randomized', random_state=42)
+        scores = pca.fit_transform(matrix)
+
+        evr = pca.explained_variance_ratio_
+        eigenvalues = pca.explained_variance_
+
+        evr_padded = np.zeros(N_COMPONENTS)
+        evr_padded[:n] = evr
+
+        probs = eigenvalues / eigenvalues.sum()
+        eigen_entropy = float(-np.sum(probs * np.log(probs + 1e-12)))
+        geo_mean = float(np.exp(np.mean(np.log(eigenvalues + 1e-12))))
+        spectral_flatness = geo_mean / (float(np.mean(eigenvalues)) + 1e-12)
+        first_pc_dominance = float(evr[0])
+        coef_variacao = float(np.std(eigenvalues) / (np.mean(eigenvalues) + 1e-12))
+
+        rec_k5 = _reconstruction_error(matrix, pca, scores, min(5, n))
+        rec_k10 = _reconstruction_error(matrix, pca, scores, min(10, n))
+        rec_k20 = _reconstruction_error(matrix, pca, scores, min(20, n))
+
+        return (
+            list(evr_padded)
+            + [eigen_entropy, spectral_flatness, first_pc_dominance, coef_variacao]
+            + [rec_k5, rec_k10, rec_k20]
+        )
+
+    @staticmethod
+    async def pca_anomaly(file: UploadFile):
+        THRESHOLD = 0.80
+        MODEL_PATH = 'modelos/PCA_anomaly/modelo_pca.pkl'
+
+        contents = await file.read()
+        features = BronzeService._extract_pca_features(contents)
+
+        model = joblib.load(MODEL_PATH)
+        prediction = int(model.predict([features])[0])
+        proba = model.predict_proba([features])[0]
+        confidence = float(max(proba))
+        label = "IA" if prediction == 1 else "REAL"
+        status = "CONCLUSIVO" if confidence >= THRESHOLD else "INCERTO — passar para próximo check"
+
+        return {
+            "label": label,
+            "confidence": confidence,
+            "status": status,
+            "prob_real": float(proba[0]),
+            "prob_ia": float(proba[1]),
+        }
+
     def __init__():
         return
