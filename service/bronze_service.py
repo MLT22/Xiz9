@@ -146,5 +146,76 @@ class BronzeService:
             "prob_ia": float(proba[1]),
         }
 
+    # Analise da Luminescencia
+    @staticmethod
+    def _extract_luminance_features(image_bytes: bytes):
+        from scipy.ndimage import sobel
+        
+        RESIZE_TO = (256, 256)
+        N_COMPONENTS = 30
+
+        img = Image.open(io.BytesIO(image_bytes)).convert('RGB').resize(RESIZE_TO)
+        img_array = np.array(img, dtype=np.float64)
+
+        # Calcula luminância
+        luminancia = (
+            0.299 * img_array[:,:,0] +
+            0.587 * img_array[:,:,1] +
+            0.114 * img_array[:,:,2]
+        )
+
+        # Gradientes com Sobel
+        grad_x = sobel(luminancia, axis=1)
+        grad_y = sobel(luminancia, axis=0)
+        magnitude = np.sqrt(grad_x**2 + grad_y**2)
+        direcao   = np.arctan2(grad_y, grad_x)
+
+        # PCA sobre a magnitude dos gradientes
+        n = min(N_COMPONENTS, min(magnitude.shape))
+        pca = PCA(n_components=n, svd_solver='randomized', random_state=42)
+        pca.fit(magnitude)
+        var = pca.explained_variance_ratio_
+
+        return [
+            float(var[0]),
+            float(np.sum(var[:5])),
+            float(np.sum(var[:10])),
+            float(np.sum(var[:20])),
+            float(-np.sum(var * np.log(var + 1e-10))),
+            float(np.std(var)),
+            float(np.std(direcao)),
+            float(np.mean(magnitude)),
+            float(np.std(magnitude)),
+            float(np.percentile(magnitude, 90)),
+            float(np.mean(magnitude) / (np.std(magnitude) + 1e-10)),
+        ]
+    
+    @staticmethod
+    async def luminance_analysis(file: UploadFile):
+        THRESHOLD = 0.80
+        MODEL_PATH = 'modelos/Luminescencia/svm_luminance.pklgit'
+        SCALER_PATH = 'modelos/Luminescencia/scaler_luminance.pkl'
+
+        contents = await file.read()
+        features = BronzeService._extract_luminance_features(contents)
+
+        scaler = joblib.load(SCALER_PATH)
+        model  = joblib.load(MODEL_PATH)
+
+        features_norm = scaler.transform([features])
+        prediction    = int(model.predict(features_norm)[0])
+        proba         = model.predict_proba(features_norm)[0]
+        confidence    = float(max(proba))
+        label         = "IA" if prediction == 1 else "REAL"
+        status        = "CONCLUSIVO" if confidence >= THRESHOLD else "INCERTO — passar para próximo check"
+
+        return {
+            "label": label,
+            "confidence": confidence,
+            "status": status,
+            "prob_real": float(proba[0]),
+            "prob_ia":   float(proba[1]),
+        }
+
     def __init__():
         return

@@ -35,6 +35,19 @@ async def pca_anomaly(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
     return JSONResponse(content=result)
 
+@bronze_router.post("/luminescencia")
+async def pca_anomaly(file: UploadFile = File(...)):
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Tipo de arquivo não suportado: '{file.content_type}'. Tipos aceitos: {ALLOWED_TYPES}"
+        )
+    try:
+        result = await BronzeService.luminance_analysis(file)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return JSONResponse(content=result)
+
 
 def __init__():
     return
