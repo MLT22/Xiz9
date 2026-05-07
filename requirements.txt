@@ -5,3 +5,9 @@ piexif
 numpy
 joblib
 scikit-learn
+scipy
+opencv-python
+torch
+torchvision
+python-multipart
+fastapi[standard]
