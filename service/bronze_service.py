@@ -193,7 +193,7 @@ class BronzeService:
     @staticmethod
     async def luminance_analysis(file: UploadFile):
         THRESHOLD = 0.80
-        MODEL_PATH = 'modelos/Luminescencia/svm_luminance.pklgit'
+        MODEL_PATH = 'modelos/Luminescencia/svm_luminance.pkl'
         SCALER_PATH = 'modelos/Luminescencia/scaler_luminance.pkl'
 
         contents = await file.read()
