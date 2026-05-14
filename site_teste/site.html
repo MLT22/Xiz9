@@ -1,176 +1,213 @@
-<!-- Teste 2 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>XIZ9 — Post</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NuvemSoft™ — Cobertor de Nuvem Premium</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cloud: #f0f4ff; --mist: #dce6f8; --dusk: #8ba4d4; --night: #1a2744;
+    --gold: #c9a96e; --soft: #f7f9ff; --text: #2c3a5a; --gray: #8a96ad;
+    --green: #2e7d32; --green-light: #e8f5e9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--soft); color: var(--text); min-height: 100vh; }
 
-    :root {
-      --bg:      #0d0d0d;
-      --surface: #161616;
-      --border:  #2a2a2a;
-      --accent:  #c8f135;
-      --text:    #f0f0f0;
-      --muted:   #555;
-      --radius:  18px;
-    }
+  header { background: white; border-bottom: 1px solid var(--mist); padding: 12px 40px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(26,39,68,.06); }
+  .logo { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--night); letter-spacing: 1px; }
+  .logo span { color: var(--dusk); }
+  nav { display: flex; gap: 28px; }
+  nav a { font-size: 13px; color: var(--gray); text-decoration: none; }
+  nav a:hover { color: var(--night); }
+  .header-cart { background: var(--night); color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 32px;
-    }
+  .breadcrumb { max-width: 1100px; margin: 18px auto 0; padding: 0 30px; font-size: 12px; color: var(--gray); }
+  .breadcrumb a { color: var(--dusk); text-decoration: none; }
 
-    h1 {
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 2rem;
-      letter-spacing: -0.04em;
-      color: var(--accent);
-    }
+  .product-container { max-width: 1100px; margin: 18px auto 60px; padding: 0 30px; display: grid; grid-template-columns: 1fr 420px; gap: 40px; align-items: start; }
 
-    .upload-card {
-      width: 340px;
-      background: var(--surface);
-      border: 1.5px dashed var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      transition: border-color .2s;
-    }
-    .upload-card:hover { border-color: var(--accent); }
+  .gallery { position: sticky; top: 80px; }
+  .main-image { background: white; border-radius: 16px; overflow: hidden; border: 1px solid var(--mist); position: relative; }
+  .main-image img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; transition: transform .4s; }
+  .main-image:hover img { transform: scale(1.03); }
+  .badge { position: absolute; top: 16px; left: 16px; background: var(--gold); color: white; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; letter-spacing: .5px; }
 
-    .drop-zone {
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      position: relative;
-      background: #111;
-      transition: background .2s;
-    }
-    .drop-zone:hover { background: #181818; }
+  .product-info { background: white; border-radius: 16px; padding: 32px; border: 1px solid var(--mist); }
+  .seller-tag { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
+  .product-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; line-height: 1.25; color: var(--night); margin-bottom: 8px; }
+  .product-subtitle { font-size: 13px; color: var(--gray); margin-bottom: 16px; font-style: italic; }
+  .rating { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+  .stars { color: var(--gold); font-size: 14px; letter-spacing: 2px; }
+  .rating-count { font-size: 12px; color: var(--dusk); text-decoration: underline; cursor: pointer; }
+  .divider { height: 1px; background: var(--mist); margin: 20px 0; }
+  .price-block { margin-bottom: 20px; }
+  .price-old { font-size: 13px; color: var(--gray); text-decoration: line-through; margin-bottom: 2px; }
+  .price-main { font-size: 36px; font-weight: 300; color: var(--night); font-family: 'Cormorant Garamond', serif; line-height: 1; }
+  .price-main sup { font-size: 18px; vertical-align: super; }
+  .price-installment { font-size: 13px; color: var(--green); margin-top: 4px; }
+  .price-pix { font-size: 12px; color: var(--gray); margin-top: 4px; }
+  .price-pix span { color: var(--green); font-weight: 500; }
+  .shipping-box { background: var(--green-light); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--green); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .option-label { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .8px; }
+  .color-options { display: flex; gap: 8px; margin-bottom: 20px; }
+  .color-btn { width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: border-color .2s; }
+  .color-btn.active { border-color: var(--night); }
+  .color-btn.c1 { background: #e8eef8; } .color-btn.c2 { background: #f5e6ff; }
+  .color-btn.c3 { background: #fff5e6; } .color-btn.c4 { background: #e6f5ee; }
+  .size-options { display: flex; gap: 8px; margin-bottom: 24px; }
+  .size-btn { padding: 6px 14px; border: 1.5px solid var(--mist); border-radius: 6px; font-size: 12px; background: white; cursor: pointer; color: var(--text); transition: all .2s; }
+  .size-btn:hover, .size-btn.active { border-color: var(--night); background: var(--night); color: white; }
+  .btn-buy { width: 100%; background: var(--night); color: white; border: none; border-radius: 10px; padding: 15px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; margin-bottom: 10px; transition: background .2s; }
+  .btn-buy:hover { background: #253564; }
+  .btn-cart { width: 100%; background: white; color: var(--night); border: 2px solid var(--night); border-radius: 10px; padding: 13px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; margin-bottom: 16px; transition: all .2s; }
+  .btn-cart:hover { background: var(--cloud); }
+  .api-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px; }
+  .api-divider span { font-size: 11px; color: var(--gray); white-space: nowrap; text-transform: uppercase; letter-spacing: 1px; }
+  .api-divider::before, .api-divider::after { content: ''; flex: 1; height: 1px; background: var(--mist); }
+  .btn-api { width: 100%; background: linear-gradient(135deg, var(--dusk) 0%, #6b8dc4 100%); color: white; border: none; border-radius: 10px; padding: 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: opacity .2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-api:hover { opacity: .9; }
+  .trust-row { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--mist); }
+  .trust-item { text-align: center; flex: 1; }
+  .trust-icon { font-size: 18px; margin-bottom: 4px; }
+  .trust-text { font-size: 10px; color: var(--gray); line-height: 1.4; }
 
-    .drop-zone img.preview {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+  .description-section { max-width: 1100px; margin: 0 auto 60px; padding: 0 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .desc-card { background: white; border-radius: 16px; padding: 28px; border: 1px solid var(--mist); }
+  .desc-card h3 { font-family: 'Cormorant Garamond', serif; font-size: 20px; color: var(--night); margin-bottom: 16px; font-weight: 600; }
+  .spec-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--cloud); font-size: 13px; }
+  .spec-row:last-child { border-bottom: none; }
+  .spec-row span:first-child { color: var(--gray); }
+  .spec-row span:last-child { font-weight: 500; color: var(--night); }
+  .desc-text { font-size: 14px; line-height: 1.8; color: var(--gray); }
+  .desc-text p { margin-bottom: 12px; }
+  .desc-text p:last-child { margin-bottom: 0; }
 
-    .plus-icon {
-      width: 64px;
-      height: 64px;
-      border: 2px solid var(--muted);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--muted);
-      font-size: 2rem;
-      transition: border-color .2s, color .2s, transform .2s;
-      z-index: 1;
-    }
-    .drop-zone:hover .plus-icon {
-      border-color: var(--accent);
-      color: var(--accent);
-      transform: scale(1.08);
-    }
-
-    .drop-label {
-      margin-top: 12px;
-      font-size: .8rem;
-      color: var(--muted);
-      z-index: 1;
-    }
-
-    #fileInput { display: none; }
-
-    .card-footer {
-      padding: 16px;
-      border-top: 1px solid var(--border);
-    }
-
-    .post-btn {
-      width: 100%;
-      padding: 12px;
-      background: var(--accent);
-      color: #0d0d0d;
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: .95rem;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: opacity .2s, transform .1s;
-    }
-    .post-btn:hover  { opacity: .88; }
-    .post-btn:active { transform: scale(.98); }
-    .post-btn:disabled { opacity: .35; cursor: not-allowed; }
-  </style>
+  footer { background: var(--night); color: rgba(255,255,255,.5); text-align: center; padding: 24px; font-size: 12px; }
+  footer span { color: var(--dusk); }
+</style>
 </head>
 <body>
 
-  <h1>XIZ9</h1>
+<header>
+  <div class="logo">Nuvem<span>Soft</span></div>
+  <nav>
+    <a href="#">Início</a>
+    <a href="#">Coleções</a>
+    <a href="#">Sobre</a>
+    <a href="#">Contato</a>
+  </nav>
+  <button class="header-cart">🛒 Carrinho (0)</button>
+</header>
 
-  <div class="upload-card">
-    <div class="drop-zone" id="dropZone">
-      <div class="plus-icon">＋</div>
-      <span class="drop-label">Clique para adicionar uma imagem</span>
-    </div>
+<div class="breadcrumb">
+  <a href="#">Início</a> › <a href="#">Cobertores</a> › <a href="#">Premium</a> › NuvemSoft™ Cobertor de Nuvem
+</div>
 
-    <input type="file" id="fileInput" accept="image/*" />
-
-    <div class="card-footer">
-      <button class="post-btn" id="postBtn" disabled>Postar</button>
+<div class="product-container">
+  <div class="gallery">
+    <div class="main-image">
+      <span class="badge">✦ Best Seller</span>
+      <img src="Coberta_nuvem.png" alt="NuvemSoft Cobertor de Nuvem">
     </div>
   </div>
 
-  <script>
-    const dropZone  = document.getElementById("dropZone");
-    const fileInput = document.getElementById("fileInput");
-    const postBtn   = document.getElementById("postBtn");
+  <div class="product-info">
+    <div class="seller-tag">NuvemSoft Collections™</div>
+    <h1 class="product-title">Cobertor de Nuvem<br>Edição Celeste</h1>
+    <p class="product-subtitle">Sinta-se flutuando entre as nuvens</p>
 
-    dropZone.addEventListener("click", () => fileInput.click());
+    <div class="rating">
+      <span class="stars">★★★★★</span>
+      <span style="font-size:13px; font-weight:500;">5.0</span>
+      <span class="rating-count">247 avaliações</span>
+    </div>
 
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    <div class="divider"></div>
 
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const old = dropZone.querySelector("img.preview");
-        if (old) old.remove();
+    <div class="price-block">
+      <div class="price-old">R$ 749,90</div>
+      <div class="price-main"><sup>R$</sup> 589<sup>,90</sup></div>
+      <div class="price-installment">✓ 6x de R$ 98,31 sem juros</div>
+      <div class="price-pix">ou <span>R$ 530,91</span> no PIX (10% off)</div>
+    </div>
 
-        const img = document.createElement("img");
-        img.className = "preview";
-        img.src = ev.target.result;
-        dropZone.prepend(img);
+    <div class="shipping-box">
+      ✈️ <span><strong>Frete grátis</strong> — chega entre sexta e segunda-feira</span>
+    </div>
 
-        dropZone.querySelector(".plus-icon").style.display = "none";
-        dropZone.querySelector(".drop-label").style.display = "none";
-      };
-      reader.readAsDataURL(file);
+    <div class="option-label">Cor</div>
+    <div class="color-options">
+      <div class="color-btn c1 active"></div>
+      <div class="color-btn c2"></div>
+      <div class="color-btn c3"></div>
+      <div class="color-btn c4"></div>
+    </div>
 
-      postBtn.disabled = false;
+    <div class="option-label">Tamanho</div>
+    <div class="size-options">
+      <button class="size-btn">Solteiro</button>
+      <button class="size-btn active">Casal</button>
+      <button class="size-btn">King</button>
+      <button class="size-btn">Queen</button>
+    </div>
+
+    <button class="btn-buy" onclick="alert('Funcionalidade em breve!')">Comprar agora</button>
+    <button class="btn-cart" onclick="alert('Funcionalidade em breve!')">Adicionar ao carrinho</button>
+
+    <div class="api-divider"><span>Análise de imagem</span></div>
+
+    <button class="btn-api" onclick="window.open('http://127.0.0.1:8000/docs', '_blank')">
+      ⚡ Verificar autenticidade com Xiz9 API
+    </button>
+
+    <div class="trust-row">
+      <div class="trust-item"><div class="trust-icon">🛡️</div><div class="trust-text">Compra<br>Protegida</div></div>
+      <div class="trust-item"><div class="trust-icon">🔄</div><div class="trust-text">30 dias<br>devolução</div></div>
+      <div class="trust-item"><div class="trust-icon">🏆</div><div class="trust-text">Qualidade<br>Premium</div></div>
+      <div class="trust-item"><div class="trust-icon">💬</div><div class="trust-text">Suporte<br>24h</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="description-section">
+  <div class="desc-card">
+    <h3>Especificações</h3>
+    <div class="spec-row"><span>Material</span><span>Microfibra Ultra-Soft 380g/m²</span></div>
+    <div class="spec-row"><span>Enchimento</span><span>Fibra Siliconada Premium</span></div>
+    <div class="spec-row"><span>Acabamento</span><span>Bordas sobrepostas duplas</span></div>
+    <div class="spec-row"><span>Cuidado</span><span>Lavagem à máquina 30°C</span></div>
+    <div class="spec-row"><span>Certificação</span><span>OEKO-TEX® Standard 100</span></div>
+    <div class="spec-row"><span>Origem</span><span>Fabricado no Brasil</span></div>
+  </div>
+  <div class="desc-card">
+    <h3>Sobre o Produto</h3>
+    <div class="desc-text">
+      <p>O <strong>NuvemSoft™ Cobertor de Nuvem Edição Celeste</strong> foi desenvolvido para oferecer a sensação mais próxima de dormir envolto em nuvens. Sua tecnologia de microfibra de ultradensidade proporciona leveza sem abrir mão do calor.</p>
+      <p>Cada peça passa por um processo de tratamento anti-alérgico e anti-estático, garantindo conforto para peles sensíveis. A estrutura tridimensional das fibras cria a textura nuvem característica da linha.</p>
+      <p>Disponível em quatro cores exclusivas, todas desenvolvidas com pigmentos de longa duração que mantêm a vivacidade após centenas de lavagens.</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  © 2026 NuvemSoft Collections™ — Desenvolvido para o projeto <span>Xiz9</span>
+</footer>
+
+<script>
+  document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     });
-
-    postBtn.addEventListener("click", () => {
-      alert("Imagem postada!");
+  });
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     });
-  </script>
+  });
+</script>
+
 </body>
 </html>
