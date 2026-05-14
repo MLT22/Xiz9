@@ -9,7 +9,7 @@
   :root {
     --cloud: #f0f4ff; --mist: #dce6f8; --dusk: #8ba4d4; --night: #1a2744;
     --gold: #c9a96e; --soft: #f7f9ff; --text: #2c3a5a; --gray: #8a96ad;
-    --green: #2e7d32; --green-light: #e8f5e9;
+    --green: #2e7d32; --green-light: #e8f5e9; --red: #c62828; --red-light: #ffebee;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'DM Sans', sans-serif; background: var(--soft); color: var(--text); min-height: 100vh; }
@@ -31,7 +31,7 @@
   .main-image { background: white; border-radius: 16px; overflow: hidden; border: 1px solid var(--mist); position: relative; }
   .main-image img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; transition: transform .4s; }
   .main-image:hover img { transform: scale(1.03); }
-  .badge { position: absolute; top: 16px; left: 16px; background: var(--gold); color: white; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; letter-spacing: .5px; }
+  .badge { position: absolute; top: 16px; left: 16px; background: var(--gold); color: white; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; }
 
   .product-info { background: white; border-radius: 16px; padding: 32px; border: 1px solid var(--mist); }
   .seller-tag { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
@@ -51,22 +51,23 @@
   .shipping-box { background: var(--green-light); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--green); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
   .option-label { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .8px; }
   .color-options { display: flex; gap: 8px; margin-bottom: 20px; }
-  .color-btn { width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: border-color .2s; }
+  .color-btn { width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
   .color-btn.active { border-color: var(--night); }
   .color-btn.c1 { background: #e8eef8; } .color-btn.c2 { background: #f5e6ff; }
   .color-btn.c3 { background: #fff5e6; } .color-btn.c4 { background: #e6f5ee; }
   .size-options { display: flex; gap: 8px; margin-bottom: 24px; }
   .size-btn { padding: 6px 14px; border: 1.5px solid var(--mist); border-radius: 6px; font-size: 12px; background: white; cursor: pointer; color: var(--text); transition: all .2s; }
   .size-btn:hover, .size-btn.active { border-color: var(--night); background: var(--night); color: white; }
-  .btn-buy { width: 100%; background: var(--night); color: white; border: none; border-radius: 10px; padding: 15px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; margin-bottom: 10px; transition: background .2s; }
+  .btn-buy { width: 100%; background: var(--night); color: white; border: none; border-radius: 10px; padding: 15px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; margin-bottom: 10px; }
   .btn-buy:hover { background: #253564; }
-  .btn-cart { width: 100%; background: white; color: var(--night); border: 2px solid var(--night); border-radius: 10px; padding: 13px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; margin-bottom: 16px; transition: all .2s; }
+  .btn-cart { width: 100%; background: white; color: var(--night); border: 2px solid var(--night); border-radius: 10px; padding: 13px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; margin-bottom: 16px; }
   .btn-cart:hover { background: var(--cloud); }
   .api-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px; }
   .api-divider span { font-size: 11px; color: var(--gray); white-space: nowrap; text-transform: uppercase; letter-spacing: 1px; }
   .api-divider::before, .api-divider::after { content: ''; flex: 1; height: 1px; background: var(--mist); }
-  .btn-api { width: 100%; background: linear-gradient(135deg, var(--dusk) 0%, #6b8dc4 100%); color: white; border: none; border-radius: 10px; padding: 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: opacity .2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-api { width: 100%; background: linear-gradient(135deg, var(--dusk) 0%, #6b8dc4 100%); color: white; border: none; border-radius: 10px; padding: 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .btn-api:hover { opacity: .9; }
+  .btn-api:disabled { opacity: .6; cursor: not-allowed; }
   .trust-row { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--mist); }
   .trust-item { text-align: center; flex: 1; }
   .trust-icon { font-size: 18px; margin-bottom: 4px; }
@@ -81,10 +82,58 @@
   .spec-row span:last-child { font-weight: 500; color: var(--night); }
   .desc-text { font-size: 14px; line-height: 1.8; color: var(--gray); }
   .desc-text p { margin-bottom: 12px; }
-  .desc-text p:last-child { margin-bottom: 0; }
 
   footer { background: var(--night); color: rgba(255,255,255,.5); text-align: center; padding: 24px; font-size: 12px; }
   footer span { color: var(--dusk); }
+
+  /* POPUP */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(26,39,68,.5); backdrop-filter: blur(4px); z-index: 200; align-items: center; justify-content: center; }
+  .overlay.show { display: flex; }
+  .popup { background: white; border-radius: 20px; padding: 32px; width: 500px; max-width: 92vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(26,39,68,.2); animation: popIn .25s ease; }
+  @keyframes popIn { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .popup-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--night); }
+  .popup-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--gray); }
+  .popup-close:hover { color: var(--night); }
+
+  /* Cards */
+  .algo-card { border: 1.5px solid var(--mist); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .algo-card:last-child { margin-bottom: 0; }
+  .algo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .algo-name { font-size: 13px; font-weight: 500; color: var(--night); }
+  .algo-tag { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; letter-spacing: .5px; }
+  .algo-tag.ia { background: var(--red-light); color: var(--red); }
+  .algo-tag.real { background: var(--green-light); color: var(--green); }
+  .algo-tag.incerto { background: #fff8e1; color: #f57f17; }
+  .algo-tag.loading { background: var(--cloud); color: var(--gray); }
+  .algo-tag.erro { background: #fce4ec; color: #880e4f; }
+  .algo-tag.info { background: var(--mist); color: var(--dusk); }
+
+  .algo-bars { margin-bottom: 10px; }
+  .bar-row { margin-bottom: 8px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray); margin-bottom: 4px; }
+  .bar-label span:last-child { font-weight: 500; color: var(--text); }
+  .bar-track { height: 6px; background: var(--cloud); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; }
+  .bar-fill.ia { background: var(--red); }
+  .bar-fill.real { background: var(--green); }
+
+  .algo-status { font-size: 11px; color: var(--gray); }
+  .algo-status span { font-weight: 500; color: var(--text); }
+
+  /* Metadata grid */
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .meta-item { font-size: 11px; }
+  .meta-item .meta-key { color: var(--gray); margin-bottom: 1px; }
+  .meta-item .meta-val { font-weight: 500; color: var(--text); }
+  .exif-note { font-size: 11px; margin-top: 10px; padding: 8px 10px; border-radius: 8px; }
+  .exif-note.suspeito { background: var(--red-light); color: var(--red); }
+  .exif-note.normal { background: var(--green-light); color: var(--green); }
+
+  .algo-loading { font-size: 12px; color: var(--gray); display: flex; align-items: center; gap: 8px; }
+  .mini-spinner { width: 14px; height: 14px; border: 2px solid var(--mist); border-top-color: var(--dusk); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .algo-error { font-size: 12px; color: var(--red); }
 </style>
 </head>
 <body>
@@ -157,7 +206,7 @@
 
     <div class="api-divider"><span>Análise de imagem</span></div>
 
-    <button class="btn-api" onclick="window.open('http://127.0.0.1:8000/docs', '_blank')">
+    <button class="btn-api" id="btnAnalyse" onclick="analyseImage()">
       ⚡ Verificar autenticidade com Xiz9 API
     </button>
 
@@ -183,9 +232,9 @@
   <div class="desc-card">
     <h3>Sobre o Produto</h3>
     <div class="desc-text">
-      <p>O <strong>NuvemSoft™ Cobertor de Nuvem Edição Celeste</strong> foi desenvolvido para oferecer a sensação mais próxima de dormir envolto em nuvens. Sua tecnologia de microfibra de ultradensidade proporciona leveza sem abrir mão do calor.</p>
-      <p>Cada peça passa por um processo de tratamento anti-alérgico e anti-estático, garantindo conforto para peles sensíveis. A estrutura tridimensional das fibras cria a textura nuvem característica da linha.</p>
-      <p>Disponível em quatro cores exclusivas, todas desenvolvidas com pigmentos de longa duração que mantêm a vivacidade após centenas de lavagens.</p>
+      <p>O <strong>NuvemSoft™ Cobertor de Nuvem Edição Celeste</strong> foi desenvolvido para oferecer a sensação mais próxima de dormir envolto em nuvens.</p>
+      <p>Cada peça passa por tratamento anti-alérgico e anti-estático, garantindo conforto para peles sensíveis.</p>
+      <p>Disponível em quatro cores exclusivas com pigmentos de longa duração.</p>
     </div>
   </div>
 </div>
@@ -193,6 +242,17 @@
 <footer>
   © 2026 NuvemSoft Collections™ — Desenvolvido para o projeto <span>Xiz9</span>
 </footer>
+
+<!-- POPUP -->
+<div class="overlay" id="overlay" onclick="closePopup(event)">
+  <div class="popup" id="popup">
+    <div class="popup-header">
+      <span class="popup-title">Análise Xiz9</span>
+      <button class="popup-close" onclick="closePopupBtn()">✕</button>
+    </div>
+    <div id="popup-body"></div>
+  </div>
+</div>
 
 <script>
   document.querySelectorAll('.color-btn').forEach(btn => {
@@ -207,6 +267,128 @@
       btn.classList.add('active');
     });
   });
+
+  const ALGORITMOS = [
+    { id: 'metadata',   nome: 'Metadados',         endpoint: '/bronze/metadata',    tipo: 'meta'   },
+    { id: 'pca',        nome: 'Anomalia PCA',       endpoint: '/bronze/PCA_anomaly', tipo: 'modelo' },
+    { id: 'luminancia', nome: 'Luminescência',      endpoint: '/bronze/luminescencia', tipo: 'modelo' },
+    { id: 'ruido',      nome: 'Ruído (DCT+SRM)',    endpoint: '/bronze/ruido',       tipo: 'modelo' },
+  ];
+
+  function cardLoadingHTML(algo) {
+    return `
+      <div class="algo-card" id="card-${algo.id}">
+        <div class="algo-header">
+          <span class="algo-name">${algo.nome}</span>
+          <span class="algo-tag loading">Analisando...</span>
+        </div>
+        <div class="algo-loading"><span class="mini-spinner"></span> Aguardando resposta...</div>
+      </div>`;
+  }
+
+  function cardMetaHTML(r) {
+    const exif        = r.exif || {};
+    const temExif     = Object.keys(exif).length > 0;
+    const exifMsg     = temExif
+      ? `<div class="exif-note normal">✅ EXIF presente — indício de imagem real</div>`
+      : `<div class="exif-note suspeito">⚠️ EXIF ausente — comum em imagens geradas por IA</div>`;
+
+    return `
+      <div class="algo-card" id="card-metadata">
+        <div class="algo-header">
+          <span class="algo-name">Metadados</span>
+          <span class="algo-tag info">Informativo</span>
+        </div>
+        <div class="meta-grid">
+          <div class="meta-item"><div class="meta-key">Formato</div><div class="meta-val">${r.format || '—'}</div></div>
+          <div class="meta-item"><div class="meta-key">Modo</div><div class="meta-val">${r.mode || '—'}</div></div>
+          <div class="meta-item"><div class="meta-key">Resolução</div><div class="meta-val">${r.width}×${r.height}px</div></div>
+          <div class="meta-item"><div class="meta-key">Tamanho</div><div class="meta-val">${(r.file_size_bytes / 1024).toFixed(1)} KB</div></div>
+          <div class="meta-item"><div class="meta-key">Animado</div><div class="meta-val">${r.is_animated ? 'Sim' : 'Não'}</div></div>
+          <div class="meta-item"><div class="meta-key">Frames</div><div class="meta-val">${r.frames}</div></div>
+        </div>
+        ${exifMsg}
+      </div>`;
+  }
+
+  function cardModeloHTML(algo, r) {
+    const cls      = r.label === 'IA' ? 'ia' : r.label === 'REAL' ? 'real' : 'incerto';
+    const probIA   = (r.prob_ia   * 100).toFixed(1);
+    const probReal = (r.prob_real * 100).toFixed(1);
+    const conf     = (r.confidence * 100).toFixed(1);
+
+    return `
+      <div class="algo-card" id="card-${algo.id}">
+        <div class="algo-header">
+          <span class="algo-name">${algo.nome}</span>
+          <span class="algo-tag ${cls}">${r.label}</span>
+        </div>
+        <div class="algo-bars">
+          <div class="bar-row">
+            <div class="bar-label"><span>Prob. IA</span><span>${probIA}%</span></div>
+            <div class="bar-track"><div class="bar-fill ia" style="width:${probIA}%"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>Prob. Real</span><span>${probReal}%</span></div>
+            <div class="bar-track"><div class="bar-fill real" style="width:${probReal}%"></div></div>
+          </div>
+        </div>
+        <div class="algo-status">Confiança: <span>${conf}%</span> — ${r.status}</div>
+      </div>`;
+  }
+
+  function cardErrorHTML(algo) {
+    return `
+      <div class="algo-card" id="card-${algo.id}">
+        <div class="algo-header">
+          <span class="algo-name">${algo.nome}</span>
+          <span class="algo-tag erro">Erro</span>
+        </div>
+        <div class="algo-error">Não foi possível obter resultado.</div>
+      </div>`;
+  }
+
+  async function analyseImage() {
+    const btn = document.getElementById('btnAnalyse');
+    btn.disabled = true;
+
+    document.getElementById('popup-body').innerHTML = ALGORITMOS.map(cardLoadingHTML).join('');
+    document.getElementById('overlay').classList.add('show');
+
+    let blob;
+    try {
+      blob = await (await fetch('Coberta_nuvem.png')).blob();
+    } catch {
+      document.getElementById('popup-body').innerHTML =
+        '<div style="text-align:center;color:var(--red);padding:20px">❌ Não foi possível carregar a imagem.</div>';
+      btn.disabled = false;
+      return;
+    }
+
+    ALGORITMOS.forEach(async (algo) => {
+      try {
+        const formData = new FormData();
+        formData.append('file', blob, 'Coberta_nuvem.png');
+
+        const resp   = await fetch(`http://127.0.0.1:8000${algo.endpoint}`, { method: 'POST', body: formData });
+        const result = await resp.json();
+
+        const html = algo.tipo === 'meta' ? cardMetaHTML(result) : cardModeloHTML(algo, result);
+        document.getElementById(`card-${algo.id}`).outerHTML = html;
+      } catch {
+        document.getElementById(`card-${algo.id}`).outerHTML = cardErrorHTML(algo);
+      }
+    });
+
+    btn.disabled = false;
+  }
+
+  function closePopup(e) {
+    if (e.target === document.getElementById('overlay')) closePopupBtn();
+  }
+  function closePopupBtn() {
+    document.getElementById('overlay').classList.remove('show');
+  }
 </script>
 
 </body>
