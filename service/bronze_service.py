@@ -216,6 +216,75 @@ class BronzeService:
             "prob_real": float(proba[0]),
             "prob_ia":   float(proba[1]),
         }
+    
+    # Análise de Ruído (DCT + SRM)
+    @staticmethod
+    def _extract_noise_features(image_bytes: bytes):
+        import cv2
+        from scipy.ndimage import convolve
 
+        RESIZE_TO  = (256, 256)
+        PATCH_SIZE = 32
+        N_PATCHES  = 3
+
+        SRM_FILTERS = [
+            np.array([[0, 0, 0], [0, -1, 1], [0, 0, 0]], dtype=np.float32),
+            np.array([[0, 0, 0], [0, -1, 0], [0, 1, 0]], dtype=np.float32),
+            np.array([[0, 0, 0], [0, -2, 1], [0, 1, 0]], dtype=np.float32),
+        ]
+
+        def apply_srm(patch):
+            results = []
+            for f in SRM_FILTERS:
+                filtered = convolve(patch.astype(np.float32), f)
+                results.append(float(np.mean(np.abs(filtered))))
+                results.append(float(np.std(filtered)))
+            return np.array(results)
+
+        def dct_score(patch):
+            dct = cv2.dct(patch.astype(np.float32))
+            return float(np.sum(np.abs(dct)))
+
+        img = Image.open(io.BytesIO(image_bytes)).convert("L").resize(RESIZE_TO)
+        arr = np.array(img, dtype=np.float32) / 255.0
+
+        h, w = arr.shape
+        patches = []
+        for y in range(0, h - PATCH_SIZE + 1, PATCH_SIZE):
+            for x in range(0, w - PATCH_SIZE + 1, PATCH_SIZE):
+                patch = arr[y:y+PATCH_SIZE, x:x+PATCH_SIZE]
+                patches.append((dct_score(patch), patch))
+
+        patches.sort(key=lambda p: p[0])
+        selected = [p for _, p in patches[:N_PATCHES]] + [p for _, p in patches[-N_PATCHES:]]
+
+        features = []
+        for patch in selected:
+            features.extend(apply_srm(patch))
+
+        return np.array(features)
+
+    @staticmethod
+    async def noise_analysis(file: UploadFile):
+        THRESHOLD  = 0.80
+        MODEL_PATH = 'modelos/Ruido/modelo_ruido.pkl'
+
+        contents   = await file.read()
+        features   = BronzeService._extract_noise_features(contents)
+
+        model      = joblib.load(MODEL_PATH)
+        prediction = int(model.predict([features])[0])
+        proba      = model.predict_proba([features])[0]
+        confidence = float(max(proba))
+        label      = "IA" if prediction == 1 else "REAL"
+        status     = "CONCLUSIVO" if confidence >= THRESHOLD else "INCERTO — passar para próximo check"
+
+        return {
+            "label":      label,
+            "confidence": confidence,
+            "status":     status,
+            "prob_real":  float(proba[0]),
+            "prob_ia":    float(proba[1]),
+        }
     def __init__():
         return
