@@ -1,13 +1,12 @@
 fastapi
+fastapi[standard]
 uvicorn
+python-multipart
 Pillow
 piexif
 numpy
 joblib
 scikit-learn
+xgboost
 scipy
-opencv-python
-torch
-torchvision
-python-multipart
-fastapi[standard]
+opencv-python-headless
