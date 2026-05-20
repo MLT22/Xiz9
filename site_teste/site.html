@@ -292,14 +292,19 @@
   }
 
   function cardVeredictoHTML(r) {
-    const cls    = r.label === 'IA' ? 'ia' : 'real';
+    const cls      = r.label === 'IA' ? 'ia' : 'real';
     const probIA   = (r.prob_ia   * 100).toFixed(1);
     const probReal = (r.prob_real * 100).toFixed(1);
     const conf     = (r.confidence * 100).toFixed(1);
+    const escalateHTML = r.escalate
+      ? `<div class="exif-note suspeito" style="margin-top:10px;background:#fff8e1;color:#f57f17">
+           ⚠️ Confiança insuficiente — requer análise na próxima camada
+         </div>`
+      : '';
     return `
       <div class="algo-card" style="border-color:${r.label === 'IA' ? 'var(--red)' : 'var(--green)'}">
         <div class="algo-header">
-          <span class="algo-name" style="font-size:14px;font-weight:600">Veredicto Final — Stacking</span>
+          <span class="algo-name" style="font-size:14px;font-weight:600">Veredicto Bronze</span>
           <span class="algo-tag ${cls}" style="font-size:12px;padding:4px 14px">${r.label}</span>
         </div>
         <div class="algo-bars">
@@ -313,6 +318,7 @@
           </div>
         </div>
         <div class="algo-status">Confiança: <span>${conf}%</span></div>
+        ${escalateHTML}
       </div>`;
   }
 
