@@ -64,5 +64,15 @@ async def assembly(file: UploadFile = File(...)):
     return JSONResponse(content=result)
 
 
+@bronze_router.post("/avaliacao_geral")
+async def avaliacao_geral(file: UploadFile = File(...)):
+    _validate(file)
+    try:
+        result = await BronzeService.avaliacao_geral(file)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return JSONResponse(content=result)
+
+
 def __init__():
     return

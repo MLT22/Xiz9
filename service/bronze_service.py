@@ -374,5 +374,89 @@ class BronzeService:
             },
         }
     
+    # ── Avaliação Geral (Stacking XGBoost) ───────────────────────────────────
+
+    @staticmethod
+    def _build_stacking_meta_row(p_pca, p_lum, p_ruido):
+        p_ia_pca, p_ia_lum, p_ia_ruido = p_pca[1], p_lum[1], p_ruido[1]
+
+        margin_pca   = p_ia_pca   - p_pca[0]
+        margin_lum   = p_ia_lum   - p_lum[0]
+        margin_ruido = p_ia_ruido - p_ruido[0]
+
+        vote_ia   = int(p_ia_pca > 0.5) + int(p_ia_lum > 0.5) + int(p_ia_ruido > 0.5)
+        all_agree = 1.0 if vote_ia in (0, 3) else 0.0
+
+        mean_p_ia  = float(np.mean([p_ia_pca, p_ia_lum, p_ia_ruido]))
+        all_probs  = [p_pca[0], p_ia_pca, p_lum[0], p_ia_lum, p_ruido[0], p_ia_ruido]
+
+        return [
+            p_pca[0],   p_ia_pca,
+            p_lum[0],   p_ia_lum,
+            p_ruido[0], p_ia_ruido,
+            margin_pca, margin_lum, margin_ruido,
+            float(vote_ia), all_agree,
+            mean_p_ia, float(max(all_probs)), float(min(all_probs)),
+        ]
+
+    @staticmethod
+    async def avaliacao_geral(file: UploadFile):
+        STACK_THRESHOLD = 0.51
+        contents = await file.read()
+
+        # Metadados
+        try:
+            image        = Image.open(io.BytesIO(contents))
+            raw_metadata = BronzeService._extract_all_metadata(image, contents)
+            meta_check   = BronzeService.check_metadata_ai_indicators(image, raw_metadata)
+        except Exception:
+            meta_check = {"has_ai_indicators": False, "indicators": []}
+
+        # Modelos base — extrai features e probabilidades
+        pca_feat  = BronzeService._extract_pca_v2_features(contents)
+        pca_model = joblib.load('modelos/PCA_anomaly/modelo_pca_v2.pkl')
+        pca_proba = pca_model.predict_proba([pca_feat])[0]
+
+        lum_feat   = BronzeService._extract_luminance_features(contents)
+        lum_scaler = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
+        lum_model  = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
+        lum_proba  = lum_model.predict_proba(lum_scaler.transform([lum_feat]))[0]
+
+        ruido_feat  = BronzeService._extract_ruido_features(contents)
+        ruido_model = joblib.load('modelos/Ruido/modelo_ruido.pkl')
+        ruido_proba = ruido_model.predict_proba([ruido_feat])[0]
+
+        # Meta-learner stacking
+        meta_row    = BronzeService._build_stacking_meta_row(pca_proba, lum_proba, ruido_proba)
+        stack_model = joblib.load('modelos/Stacking/modelo_stacking.pkl')
+        threshold   = STACK_THRESHOLD
+
+        stack_proba = stack_model.predict_proba([meta_row])[0]
+        prob_ia     = float(stack_proba[1])
+        prob_real   = float(stack_proba[0])
+        label       = "IA" if prob_ia >= threshold else "REAL"
+        confidence  = prob_ia if label == "IA" else prob_real
+
+        def _base_result(proba):
+            pred = int(proba[1] > 0.5)
+            return {
+                "label":      "IA" if pred == 1 else "REAL",
+                "prob_real":  float(proba[0]),
+                "prob_ia":    float(proba[1]),
+            }
+
+        return {
+            "label":      label,
+            "confidence": round(confidence, 4),
+            "prob_real":  round(prob_real, 4),
+            "prob_ia":    round(prob_ia, 4),
+            "metadata":   meta_check,
+            "modelos_base": {
+                "pca_v2":        _base_result(pca_proba),
+                "luminescencia": _base_result(lum_proba),
+                "ruido":         _base_result(ruido_proba),
+            },
+        }
+
     def __init__():
         return
