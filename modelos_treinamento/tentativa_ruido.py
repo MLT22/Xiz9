@@ -76,6 +76,14 @@ def extract_features(image_path: str) -> np.ndarray:
     for patch in low_patches + high_patches:
         features.extend(apply_srm(patch))
 
+    laplacian = cv2.Laplacian((arr * 255).astype(np.uint8), cv2.CV_64F)
+    features.extend([
+        float(np.var(laplacian)),
+        float(np.mean(np.abs(laplacian))),
+        float(np.std(laplacian)),
+        float(np.percentile(np.abs(laplacian), 90)),
+    ])
+
     return np.array(features)
 
 

@@ -335,9 +335,9 @@ class BronzeService:
     # ── Ruído (SRM + DCT) ─────────────────────────────────────────────────────
 
     _SRM_FILTERS = [
-        np.array([[0, 0, 0], [0, -1, 1], [0, 0, 0]], dtype=np.float32),
-        np.array([[0, 0, 0], [0, -1, 0], [0, 1, 0]], dtype=np.float32),
-        np.array([[0, 0, 0], [0, -2, 1], [0, 1, 0]], dtype=np.float32),
+    np.array([[0, 0, 0], [0, -1, 1], [0, 0, 0]], dtype=np.float32),
+    np.array([[0, 0, 0], [0, -1, 0], [0, 1, 0]], dtype=np.float32),
+    np.array([[0, 0, 0], [0, -2, 1], [0, 1, 0]], dtype=np.float32),
     ]
 
     @staticmethod
@@ -361,6 +361,15 @@ class BronzeService:
             for f in BronzeService._SRM_FILTERS:
                 filtered = convolve(patch, f)
                 features.extend([float(np.mean(np.abs(filtered))), float(np.std(filtered))])
+
+        laplacian = cv2.Laplacian((arr * 255).astype(np.uint8), cv2.CV_64F)
+        features.extend([
+            float(np.var(laplacian)),
+            float(np.mean(np.abs(laplacian))),
+            float(np.std(laplacian)),
+            float(np.percentile(np.abs(laplacian), 90)),
+        ])
+
         return np.array(features)
 
     @staticmethod
