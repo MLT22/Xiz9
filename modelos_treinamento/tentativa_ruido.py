@@ -22,11 +22,22 @@ RESIZE_TO  = (256, 256)
 PATCH_SIZE = 32
 N_PATCHES  = 3  # top N patches de alta e baixa frequência
 
-# Filtros SRM (extração de ruído)
+# ── Filtros SRM (extração de ruído) ───────────────────────────────────────────
+# Baseados no trabalho de Fridrich & Kodovsky (2012)
+# Cada filtro captura um padrão de ruído diferente na imagem
 SRM_FILTERS = [
+    #Filtros originais — direções horizontal, vertical e diagonal
     np.array([[0, 0, 0], [0, -1, 1], [0, 0, 0]], dtype=np.float32),
     np.array([[0, 0, 0], [0, -1, 0], [0, 1, 0]], dtype=np.float32),
     np.array([[0, 0, 0], [0, -2, 1], [0, 1, 0]], dtype=np.float32),
+    # Filtros adicionados v2 — capturam variações em outras direções
+    np.array([[-1, 2, -1], [0, 0, 0], [0, 0, 0]], dtype=np.float32),
+    np.array([[0, 0, 0], [-1, 2, -1], [0, 0, 0]], dtype=np.float32),
+    np.array([[-1, 0, 0], [2, 0, 0], [-1, 0, 0]], dtype=np.float32),
+    # Filtros adicionados v3 — variações verticais, diagonais e Laplaciano 2D
+    np.array([[0, -1, 0], [0, 2, 0], [0, -1, 0]], dtype=np.float32),
+    np.array([[-1, 0, 1], [0, 0, 0], [1, 0, -1]], dtype=np.float32),
+    np.array([[1, -2, 1], [-2, 4, -2], [1, -2, 1]], dtype=np.float32),
 ]
 
 
@@ -54,7 +65,8 @@ def extract_features(image_path: str) -> np.ndarray:
     h, w = arr.shape
     patches = []
 
-    # Divide a imagem em patches e calcula score DCT de cada um
+    # ── 1. Seleção de patches via DCT ─────────────────────────────────────────
+    # Divide a imagem em patches e pontua cada um pela complexidade de frequência
     for y in range(0, h - PATCH_SIZE + 1, PATCH_SIZE):
         for x in range(0, w - PATCH_SIZE + 1, PATCH_SIZE):
             patch = arr[y:y+PATCH_SIZE, x:x+PATCH_SIZE]
@@ -64,18 +76,20 @@ def extract_features(image_path: str) -> np.ndarray:
     if not patches:
         return None
 
-    # Ordena por score DCT
+    # Ordena e seleciona os N de menor e N de maior frequência
     patches.sort(key=lambda p: p[0])
-
-    # Pega os N de menor e N de maior frequência
     low_patches  = [p for _, p in patches[:N_PATCHES]]
     high_patches = [p for _, p in patches[-N_PATCHES:]]
 
-    # Extrai features SRM de cada patch selecionado
+    # ── 2. Extração de ruído via filtros SRM (108 features) ───────────────────
+    # Cada filtro captura um padrão de ruído diferente em cada patch selecionado
     features = []
     for patch in low_patches + high_patches:
         features.extend(apply_srm(patch))
-
+        
+    # ── 3. Estatísticas globais do ruído da imagem inteira (4 features) ───────
+    # Laplacian captura a variação brusca entre pixels — ruído orgânico de câmera
+    # Imagens reais têm variância alta; imagens de IA tendem a ser mais suaves
     laplacian = cv2.Laplacian((arr * 255).astype(np.uint8), cv2.CV_64F)
     features.extend([
         float(np.var(laplacian)),
@@ -83,7 +97,6 @@ def extract_features(image_path: str) -> np.ndarray:
         float(np.std(laplacian)),
         float(np.percentile(np.abs(laplacian), 90)),
     ])
-
     return np.array(features)
 
 
