@@ -60,33 +60,109 @@ def _pca_features(image_bytes: bytes):
                rec_error(matrix, pca, scores, min(20, n))])
 
 
-def _lum_features(image_bytes: bytes):
-    N_COMPONENTS = 30
-    img   = Image.open(io.BytesIO(image_bytes)).convert('RGB').resize((256, 256))
-    arr   = np.array(img, dtype=np.float64)
-    lum   = 0.299*arr[:,:,0] + 0.587*arr[:,:,1] + 0.114*arr[:,:,2]
-    gx    = sobel(lum, axis=1)
-    gy    = sobel(lum, axis=0)
-    mag   = np.sqrt(gx**2 + gy**2)
-    dirc  = np.arctan2(gy, gx)
-    n     = min(N_COMPONENTS, min(mag.shape))
-    pca   = PCA(n_components=n, svd_solver='randomized', random_state=42)
-    pca.fit(mag)
-    var   = pca.explained_variance_ratio_
+_GRID = 4  # grade 4x4 = 16 blocos — adicionar como atributo de classe
 
-    return [
+
+def _lum_features(image_bytes: bytes):
+    RESIZE_TO   = (256, 256)
+    GRID        = 4
+    N_COMP      = 30
+
+    img_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    if img is None:
+        return None
+
+    # ── Luminância ───────────────────────────────────────────────────────
+    img_rgb    = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float64)
+    img_r      = cv2.resize(img_rgb, RESIZE_TO)
+    luminancia = (0.299 * img_r[:,:,0] +
+                    0.587 * img_r[:,:,1] +
+                    0.114 * img_r[:,:,2])
+
+    # ── Gradientes Sobel ─────────────────────────────────────────────────
+    from scipy.ndimage import sobel as scipy_sobel
+    grad_x    = scipy_sobel(luminancia, axis=1)
+    grad_y    = scipy_sobel(luminancia, axis=0)
+    magnitude = np.sqrt(grad_x**2 + grad_y**2)
+    direcao   = np.arctan2(grad_y, grad_x)
+
+    # ── 1. Features PCA (11 features) ────────────────────────────────────
+    from sklearn.decomposition import PCA
+    n   = min(N_COMP, min(magnitude.shape))
+    pca = PCA(n_components=n, svd_solver='randomized', random_state=42)
+    pca.fit(magnitude)
+    var = pca.explained_variance_ratio_
+
+    pca_feats = [
         float(var[0]),
         float(np.sum(var[:5])),
         float(np.sum(var[:10])),
         float(np.sum(var[:20])),
         float(-np.sum(var * np.log(var + 1e-10))),
         float(np.std(var)),
-        float(np.std(dirc)),
-        float(np.mean(mag)),
-        float(np.std(mag)),
-        float(np.percentile(mag, 90)),
-        float(np.mean(mag) / (np.std(mag) + 1e-10)),
+        float(np.std(direcao)),
+        float(np.mean(magnitude)),
+        float(np.std(magnitude)),
+        float(np.percentile(magnitude, 90)),
+        float(np.mean(magnitude) / (np.std(magnitude) + 1e-10)),
     ]
+
+    # ── 2. FFT da magnitude do gradiente (5 features) ────────────────────
+    fft_mag = np.abs(np.fft.fftshift(np.fft.fft2(magnitude)))
+    h, w    = fft_mag.shape
+    cy, cx  = h // 2, w // 2
+    Y, X    = np.ogrid[:h, :w]
+    dist    = np.sqrt((X - cx)**2 + (Y - cy)**2)
+    md      = np.sqrt(cx**2 + cy**2)
+    e_low   = float(np.sum(fft_mag[dist <= md * 0.1]**2))
+    e_mid   = float(np.sum(fft_mag[(dist > md * 0.1) & (dist <= md * 0.4)]**2))
+    e_high  = float(np.sum(fft_mag[dist > md * 0.4]**2))
+    e_tot   = e_low + e_mid + e_high + 1e-12
+    fft_feats = [
+        e_low  / e_tot,
+        e_mid  / e_tot,
+        e_high / e_tot,
+        e_high / (e_low + 1e-12),
+        float(np.std(np.log1p(fft_mag))),
+    ]
+
+    # ── 3. Histograma de direções HOG (8 features) ───────────────────────
+    hist_dir, _ = np.histogram(direcao, bins=8, range=(-np.pi, np.pi))
+    hist_dir    = hist_dir / (hist_dir.sum() + 1e-10)
+    hog_feats   = hist_dir.tolist()
+
+    # ── 4. Coerência local do gradiente (2 features) ─────────────────────
+    coer_v     = float(np.mean(np.cos(direcao[:-1, :] - direcao[1:, :])))
+    coer_h     = float(np.mean(np.cos(direcao[:, :-1] - direcao[:, 1:])))
+    coer_feats = [coer_v, coer_h]
+
+    # ── 5. Normalização local (3 features) ───────────────────────────────
+    blur       = cv2.GaussianBlur(magnitude.astype(np.float32), (15, 15), 0)
+    mag_norm   = magnitude / (blur.astype(np.float64) + 1e-6)
+    norm_feats = [
+        float(np.mean(mag_norm)),
+        float(np.std(mag_norm)),
+        float(np.percentile(mag_norm, 95)),
+    ]
+
+    # ── 6. Features por blocos 4x4 (48 features) ─────────────────────────
+    bh, bw      = RESIZE_TO[0] // GRID, RESIZE_TO[1] // GRID
+    block_feats = []
+    for i in range(GRID):
+        for j in range(GRID):
+            bloco = magnitude[i*bh:(i+1)*bh, j*bw:(j+1)*bw]
+            block_feats.append(float(np.mean(bloco)))
+            block_feats.append(float(np.std(bloco)))
+            block_feats.append(float(np.percentile(bloco, 90)))
+
+    # ── Concatenar e sanitizar ────────────────────────────────────────────
+    all_feats = (pca_feats + fft_feats + hog_feats +
+                    coer_feats + norm_feats + block_feats)
+
+    result = np.array(all_feats, dtype=np.float64)
+    result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
+    return result.tolist()
 
 
 def _pca_rf_features(image_bytes: bytes):

@@ -3,3 +3,5 @@ __pycache__
 *.pkl
 *.zip
 venv/
+modelos_treinamento/archive
+cache*
