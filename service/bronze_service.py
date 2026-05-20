@@ -401,7 +401,7 @@ class BronzeService:
 
     @staticmethod
     async def avaliacao_geral(file: UploadFile):
-        STACK_THRESHOLD = 0.51
+        CONCLUSIVO_THRESHOLD = 0.75
         contents = await file.read()
 
         # Metadados
@@ -426,30 +426,32 @@ class BronzeService:
         ruido_model = joblib.load('modelos/Ruido/modelo_ruido.pkl')
         ruido_proba = ruido_model.predict_proba([ruido_feat])[0]
 
-        # Meta-learner stacking
-        meta_row    = BronzeService._build_stacking_meta_row(pca_proba, lum_proba, ruido_proba)
-        stack_model = joblib.load('modelos/Stacking/modelo_stacking.pkl')
-        threshold   = STACK_THRESHOLD
+        # Consenso — média das probabilidades dos 3 modelos base
+        prob_ia   = round(float((pca_proba[1] + lum_proba[1] + ruido_proba[1]) / 3), 4)
+        prob_real = round(float((pca_proba[0] + lum_proba[0] + ruido_proba[0]) / 3), 4)
+        label      = "IA" if prob_ia >= 0.5 else "REAL"
+        confidence = prob_ia if label == "IA" else prob_real
+        escalate   = confidence < CONCLUSIVO_THRESHOLD
 
-        stack_proba = stack_model.predict_proba([meta_row])[0]
-        prob_ia     = float(stack_proba[1])
-        prob_real   = float(stack_proba[0])
-        label       = "IA" if prob_ia >= threshold else "REAL"
-        confidence  = prob_ia if label == "IA" else prob_real
+        # Metadados com indicadores de IA são sempre conclusivos
+        if meta_check.get("has_ai_indicators"):
+            label      = "IA"
+            confidence = 0.99
+            escalate   = False
 
         def _base_result(proba):
-            pred = int(proba[1] > 0.5)
             return {
-                "label":      "IA" if pred == 1 else "REAL",
-                "prob_real":  float(proba[0]),
-                "prob_ia":    float(proba[1]),
+                "label":     "IA" if proba[1] > 0.5 else "REAL",
+                "prob_real": round(float(proba[0]), 4),
+                "prob_ia":   round(float(proba[1]), 4),
             }
 
         return {
             "label":      label,
             "confidence": round(confidence, 4),
-            "prob_real":  round(prob_real, 4),
-            "prob_ia":    round(prob_ia, 4),
+            "prob_real":  prob_real,
+            "prob_ia":    prob_ia,
+            "escalate":   escalate,
             "metadata":   meta_check,
             "modelos_base": {
                 "pca_v2":        _base_result(pca_proba),
