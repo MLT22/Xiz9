@@ -24,7 +24,7 @@ APi para a verificar se uma imagem foi ou não gerada por ia
         │   ├── PCA_anomaly/
         │   │   └── modelo_pca_v2.pkl   
         │   ├── Luminescencia/
-        │   │   └── scaler_luminance.pkl
+        │   │   ├── scaler_luminance.pkl
         │   │   └── svm_luminance.pkl
         │   ├── Ruido
         │   │   └── modelo_ruido.pkl
