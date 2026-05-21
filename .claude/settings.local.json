@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\23.01270-6\\\\Desktop\\\\TCC\\\\Xiz9\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(cd \"c:/Users/23.01270-6/Desktop/TCC/Xiz9\" && mkdir -p modelos_treinamento/pca modelos_treinamento/luminancia modelos_treinamento/ruido modelos_treinamento/stacking modelos_treinamento/utils)",
+      "Bash(git mv *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\23.01270-6\\Desktop\\TCC\\Xiz9\\modelos_treinamento"
+    ]
+  }
+}
