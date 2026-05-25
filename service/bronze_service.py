@@ -391,14 +391,19 @@ class BronzeService:
 
     @staticmethod
     async def ruido_analysis(file: UploadFile):
-        THRESHOLD  = 0.80
-        MODEL_PATH = 'modelos/Ruido/modelo_ruido.pkl'
+        import json
+        MODEL_PATH     = 'modelos/Ruido/modelo_ruido.pkl'
+        THRESHOLD_PATH = 'modelos/Ruido/threshold.json'
 
-        contents   = await file.read()
-        features   = BronzeService._extract_ruido_features(contents)
-        model      = joblib.load(MODEL_PATH)
+        contents = await file.read()
+        features = BronzeService._extract_ruido_features(contents)
+        model    = joblib.load(MODEL_PATH)
+
+        with open(THRESHOLD_PATH) as f:
+            THRESHOLD = json.load(f)['threshold']
+
         proba      = model.predict_proba([features])[0]
-        prediction = int(model.predict([features])[0])
+        prediction = 1 if proba[1] >= THRESHOLD else 0
         confidence = float(max(proba))
         label      = "IA" if prediction == 1 else "REAL"
         status     = "CONCLUSIVO" if confidence >= THRESHOLD else "INCERTO — passar para próximo check"
