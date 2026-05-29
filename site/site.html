@@ -208,10 +208,10 @@
 
     <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="onImageChange(event)">
     <button class="btn-cart" style="margin-bottom:8px;font-size:13px;padding:10px" onclick="document.getElementById('imageInput').click()">
-      🖼️ Trocar imagem para teste
+      Trocar imagem para teste
     </button>
     <button class="btn-api" id="btnAnalyse" onclick="analyseImage()">
-      ⚡ Verificar autenticidade com Xiz9 API
+      Verificar autenticidade com Xiz9 API
     </button>
 
     <div class="trust-row">
@@ -298,7 +298,7 @@
     const conf     = (r.confidence * 100).toFixed(1);
     const escalateHTML = r.escalate
       ? `<div class="exif-note suspeito" style="margin-top:10px;background:#fff8e1;color:#f57f17">
-           ⚠️ Confiança insuficiente — requer análise na próxima camada
+          Confiança insuficiente — requer análise na próxima camada
          </div>`
       : '';
     return `
@@ -333,7 +333,7 @@
             <span class="algo-tag ia">IA Detectada</span>
           </div>
           <div class="exif-note suspeito" style="margin-bottom:8px">
-            ⚠️ Indicadores de IA encontrados nos metadados — alta certeza (~99%)
+            Indicadores de IA encontrados nos metadados — alta certeza (~99%)
           </div>
           <ul style="font-size:11px;color:var(--red);padding-left:16px;margin:0">${lista}</ul>
         </div>`;
@@ -344,7 +344,7 @@
           <span class="algo-name">Metadados</span>
           <span class="algo-tag info">Informativo</span>
         </div>
-        <div class="exif-note normal">✅ Nenhum indicador de IA encontrado nos metadados</div>
+        <div class="exif-note normal">Nenhum indicador de IA encontrado nos metadados</div>
       </div>`;
   }
 
@@ -398,7 +398,7 @@
       document.getElementById('popup-body').innerHTML =
         cardVeredictoHTML(r) +
         cardMetadadosHTML(r.metadata) +
-        cardBaseHTML('Anomalia PCA',    bases.pca_v2        || {label:'—', prob_ia:0, prob_real:0}) +
+        cardBaseHTML('Frequência',    bases.frequencia_cor        || {label:'—', prob_ia:0, prob_real:0}) +
         cardBaseHTML('Luminescência',   bases.luminescencia || {label:'—', prob_ia:0, prob_real:0}) +
         cardBaseHTML('Ruído (DCT+SRM)', bases.ruido         || {label:'—', prob_ia:0, prob_real:0});
     } catch {

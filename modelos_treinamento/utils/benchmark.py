@@ -1,9 +1,9 @@
 """
 Uso:
-    python modelos_treinamento/benchmark.py <pasta_reais> <pasta_ia>
+    python modelos_treinamento/utils/benchmark.py <pasta_reais> <pasta_ia>
 
 Exemplo:
-    python modelos_treinamento/benchmark.py dataset/real dataset/ia
+    python modelos_treinamento/utils/benchmark.py dataset/real dataset/ia
 """
 
 import sys
@@ -374,7 +374,7 @@ def run_ensemble(samples, members):
 
 def main():
     if len(sys.argv) != 3:
-        print("Uso: python modelos_treinamento/benchmark.py <pasta_reais> <pasta_ia>")
+        print("Uso: python modelos_treinamento/utils/benchmark.py <pasta_reais> <pasta_ia>")
         sys.exit(1)
 
     real_dir = Path(sys.argv[1])
