@@ -21,7 +21,7 @@ _AI_PNG_KEYS = {"parameters", "workflow", "prompt", "invokeai_metadata", "sd-met
 
 
 class BronzeService:
-
+    
     # ── Metadados ─────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -205,13 +205,26 @@ class BronzeService:
 
     # ── Luminescência ─────────────────────────────────────────────────────────
 
-        _GRID = 4  # grade 4x4 = 16 blocos — adicionar como atributo de classe
+    @staticmethod
+    def _pca_distribution_features(eig: np.ndarray) -> list:
+        """Features invariantes à base — comparáveis entre imagens."""
+        eig_sorted    = np.sort(eig)[::-1]
+        norm_eig      = eig_sorted / (eig_sorted.sum() + 1e-12)
+        eigen_entropy = float(-np.sum(norm_eig * np.log(norm_eig + 1e-12)))
+        top5_ratio    = float(eig_sorted[:5].sum() / (eig_sorted[-5:].sum() + 1e-12))
+        cumsum        = np.cumsum(norm_eig)
+        n_50          = int(np.searchsorted(cumsum, 0.50) + 1)
+        n_90          = int(np.searchsorted(cumsum, 0.90) + 1)
+        n_95          = int(np.searchsorted(cumsum, 0.95) + 1)
+        k             = np.arange(1, len(eig_sorted) + 1)
+        slope         = float(np.polyfit(np.log(k), np.log(eig_sorted + 1e-12), 1)[0])
+        return [eigen_entropy, top5_ratio, n_50, n_90, n_95, slope]
  
     @staticmethod
     def _extract_luminance_features(image_bytes: bytes):
-        RESIZE_TO   = (256, 256)
-        GRID        = 4
-        N_COMP      = 30
+        RESIZE_TO = (256, 256)
+        GRID      = 4
+        N_COMP    = 30
  
         img_array = np.frombuffer(image_bytes, dtype=np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
@@ -232,20 +245,14 @@ class BronzeService:
         magnitude = np.sqrt(grad_x**2 + grad_y**2)
         direcao   = np.arctan2(grad_y, grad_x)
  
-        # ── 1. Features PCA (11 features) ────────────────────────────────────
+        # ── 1. PCA invariante (6 features) ───────────────────────────────────
         from sklearn.decomposition import PCA
         n   = min(N_COMP, min(magnitude.shape))
         pca = PCA(n_components=n, svd_solver='randomized', random_state=42)
         pca.fit(magnitude)
-        var = pca.explained_variance_ratio_
+        eig = pca.explained_variance_
  
-        pca_feats = [
-            float(var[0]),
-            float(np.sum(var[:5])),
-            float(np.sum(var[:10])),
-            float(np.sum(var[:20])),
-            float(-np.sum(var * np.log(var + 1e-10))),
-            float(np.std(var)),
+        pca_feats = BronzeService._pca_distribution_features(eig) + [
             float(np.std(direcao)),
             float(np.mean(magnitude)),
             float(np.std(magnitude)),
@@ -254,16 +261,16 @@ class BronzeService:
         ]
  
         # ── 2. FFT da magnitude do gradiente (5 features) ────────────────────
-        fft_mag = np.abs(np.fft.fftshift(np.fft.fft2(magnitude)))
-        h, w    = fft_mag.shape
-        cy, cx  = h // 2, w // 2
-        Y, X    = np.ogrid[:h, :w]
-        dist    = np.sqrt((X - cx)**2 + (Y - cy)**2)
-        md      = np.sqrt(cx**2 + cy**2)
-        e_low   = float(np.sum(fft_mag[dist <= md * 0.1]**2))
-        e_mid   = float(np.sum(fft_mag[(dist > md * 0.1) & (dist <= md * 0.4)]**2))
-        e_high  = float(np.sum(fft_mag[dist > md * 0.4]**2))
-        e_tot   = e_low + e_mid + e_high + 1e-12
+        fft_mag   = np.abs(np.fft.fftshift(np.fft.fft2(magnitude)))
+        h, w      = fft_mag.shape
+        cy, cx    = h // 2, w // 2
+        Y, X      = np.ogrid[:h, :w]
+        dist      = np.sqrt((X - cx)**2 + (Y - cy)**2)
+        md        = np.sqrt(cx**2 + cy**2)
+        e_low     = float(np.sum(fft_mag[dist <= md * 0.1]**2))
+        e_mid     = float(np.sum(fft_mag[(dist > md * 0.1) & (dist <= md * 0.4)]**2))
+        e_high    = float(np.sum(fft_mag[dist > md * 0.4]**2))
+        e_tot     = e_low + e_mid + e_high + 1e-12
         fft_feats = [
             e_low  / e_tot,
             e_mid  / e_tot,
@@ -302,36 +309,45 @@ class BronzeService:
                 block_feats.append(float(np.percentile(bloco, 90)))
  
         # ── Concatenar e sanitizar ────────────────────────────────────────────
-        all_feats = (pca_feats + fft_feats + hog_feats +
-                     coer_feats + norm_feats + block_feats)
- 
+        all_feats = (pca_feats + fft_feats + hog_feats + coer_feats + norm_feats + block_feats)
         result = np.array(all_feats, dtype=np.float64)
         result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
         return result.tolist()
 
 
+
     @staticmethod
     async def luminance_analysis(file: UploadFile):
-        THRESHOLD  = 0.80
-        MODEL_PATH  = 'modelos/Luminescencia/svm_luminance.pkl'
-        SCALER_PATH = 'modelos/Luminescencia/scaler_luminance.pkl'
+        THRESHOLD       = 0.80
+        MODEL_PATH      = 'modelos/Luminescencia/svm_luminance.pkl'
+        SCALER_PATH     = 'modelos/Luminescencia/scaler_luminance.pkl'
+        CALIBRATOR_PATH = 'modelos/Luminescencia/calibrator_luminance.pkl'
+        THRESHOLD_PATH  = 'modelos/Luminescencia/threshold.json'
 
-        contents      = await file.read()
-        features      = BronzeService._extract_luminance_features(contents)
-        scaler        = joblib.load(SCALER_PATH)
-        model         = joblib.load(MODEL_PATH)
+        contents  = await file.read()
+        features  = BronzeService._extract_luminance_features(contents)
+
+        scaler     = joblib.load(SCALER_PATH)
+        model      = joblib.load(MODEL_PATH)
+        calibrator = joblib.load(CALIBRATOR_PATH)
+
+        with open(THRESHOLD_PATH) as f:
+            lum_threshold = json.load(f)['threshold']
+
         features_norm = scaler.transform([features])
-        prediction    = int(model.predict(features_norm)[0])
-        proba         = model.predict_proba(features_norm)[0]
-        confidence    = float(max(proba))
-        label         = "IA" if prediction == 1 else "REAL"
-        status        = "CONCLUSIVO" if confidence >= THRESHOLD else "INCERTO — passar para próximo check"
+        proba_raw     = model.predict_proba(features_norm)[0]
+        proba_cal     = calibrator.predict([proba_raw[1]])[0]
+        proba         = np.array([1 - proba_cal, proba_cal])
+
+        prediction = int(proba[1] >= lum_threshold)
+        confidence = float(max(proba))
+        label      = "IA" if prediction == 1 else "REAL"
+        status     = "CONCLUSIVO" if confidence >= THRESHOLD else "INCERTO — passar para próximo check"
 
         return {
             "label": label, "confidence": confidence, "status": status,
             "prob_real": float(proba[0]), "prob_ia": float(proba[1]),
         }
-
     # ── Ruído (SRM + DCT) ─────────────────────────────────────────────────────
 
     _SRM_FILTERS = [
@@ -432,11 +448,18 @@ class BronzeService:
         pca_pred  = int(pca_model.predict([pca_feat])[0])
 
         # Luminescência
-        lum_feat   = BronzeService._extract_luminance_features(contents)
-        lum_scaler = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
-        lum_model  = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
-        lum_proba  = lum_model.predict_proba(lum_scaler.transform([lum_feat]))[0]
-        lum_pred   = int(lum_model.predict(lum_scaler.transform([lum_feat]))[0])
+        lum_feat      = BronzeService._extract_luminance_features(contents)
+        lum_scaler    = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
+        lum_model     = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
+        lum_calibrator = joblib.load('modelos/Luminescencia/calibrator_luminance.pkl')
+        with open('modelos/Luminescencia/threshold.json') as f:
+            lum_threshold = json.load(f)['threshold']
+
+        lum_feat_s    = lum_scaler.transform([lum_feat])
+        lum_proba_raw = lum_model.predict_proba(lum_feat_s)[0]
+        lum_proba_cal = lum_calibrator.predict(lum_proba_raw[1:2])
+        lum_proba     = np.array([1 - lum_proba_cal[0], lum_proba_cal[0]])
+        lum_pred      = int(lum_proba[1] >= lum_threshold)
 
         # Ruído
         ruido_feat  = BronzeService._extract_ruido_features(contents)
@@ -518,16 +541,25 @@ class BronzeService:
         pca_model = joblib.load('modelos/PCA_anomaly/modelo_pca_v2.pkl')
         pca_proba = pca_model.predict_proba([pca_feat])[0]
 
-        lum_feat   = BronzeService._extract_luminance_features(contents)
-        lum_scaler = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
-        lum_model  = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
-        lum_proba  = lum_model.predict_proba(lum_scaler.transform([lum_feat]))[0]
+        lum_feat      = BronzeService._extract_luminance_features(contents)
+        lum_scaler    = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
+        lum_model     = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
+        lum_calibrator = joblib.load('modelos/Luminescencia/calibrator_luminance.pkl')
+        with open('modelos/Luminescencia/threshold.json') as f:
+            lum_threshold = json.load(f)['threshold']
+
+        lum_feat_s    = lum_scaler.transform([lum_feat])
+        lum_proba_raw = lum_model.predict_proba(lum_feat_s)[0]
+        lum_proba_cal = lum_calibrator.predict(lum_proba_raw[1:2])
+        lum_proba     = np.array([1 - lum_proba_cal[0], lum_proba_cal[0]])
 
         ruido_feat  = BronzeService._extract_ruido_features(contents)
         ruido_model = joblib.load('modelos/Ruido/modelo_ruido.pkl')
         ruido_proba = ruido_model.predict_proba([ruido_feat])[0]
 
         # Consenso — média das probabilidades dos 3 modelos base
+        # Luminescência usa threshold calibrado; PCA e Ruído usam 0.5
+        lum_pred   = int(lum_proba[1] >= lum_threshold)
         prob_ia   = round(float((pca_proba[1] + lum_proba[1] + ruido_proba[1]) / 3), 4)
         prob_real = round(float((pca_proba[0] + lum_proba[0] + ruido_proba[0]) / 3), 4)
         label      = "IA" if prob_ia >= 0.5 else "REAL"
