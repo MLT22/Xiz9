@@ -121,50 +121,70 @@ class BronzeService:
             "indicators": indicators,
         }
 
-    # ── PCA v2 (XGBoost + cor + FFT) ─────────────────────────────────────────
+    # ── Frequencia_Cor (FFT + cor RGB/HSV + estatísticas PCA invariantes) ────────
 
     @staticmethod
-    def _extract_pca_v2_features(image_bytes: bytes):
-        N_COMPONENTS = 30
-        img_rgb  = Image.open(io.BytesIO(image_bytes)).convert('RGB').resize((128, 128))
+    def _pca_distribution_features(eig: np.ndarray) -> list:
+        eig_sorted = np.sort(eig)[::-1]
+        norm_eig   = eig_sorted / (eig_sorted.sum() + 1e-12)
+        eigen_entropy = float(-np.sum(norm_eig * np.log(norm_eig + 1e-12)))
+        top5_ratio    = float(eig_sorted[:5].sum() / (eig_sorted[-5:].sum() + 1e-12))
+        cumsum = np.cumsum(norm_eig)
+        n_50   = int(np.searchsorted(cumsum, 0.50) + 1)
+        n_90   = int(np.searchsorted(cumsum, 0.90) + 1)
+        n_95   = int(np.searchsorted(cumsum, 0.95) + 1)
+        k      = np.arange(1, len(eig_sorted) + 1)
+        slope  = float(np.polyfit(np.log(k), np.log(eig_sorted + 1e-12), 1)[0])
+        return [eigen_entropy, top5_ratio, n_50, n_90, n_95, slope]
+
+    @staticmethod
+    def _extract_freq_cor_features(image_bytes: bytes):
+        from io import BytesIO as _BytesIO
+        N_PCA_COMP = 30
+        RESIZE_TO  = (128, 128)
+
+        img_rgb  = Image.open(_BytesIO(image_bytes)).convert('RGB').resize(RESIZE_TO)
         img_gray = img_rgb.convert('L')
         arr_rgb  = np.array(img_rgb,  dtype=np.float64) / 255.0
         arr_gray = np.array(img_gray, dtype=np.float64) / 255.0
 
-        n      = min(N_COMPONENTS, min(arr_gray.shape))
+        n      = min(N_PCA_COMP, min(arr_gray.shape))
         pca    = PCA(n_components=n, svd_solver='randomized', random_state=42)
         scores = pca.fit_transform(arr_gray)
-        evr    = pca.explained_variance_ratio_
         eig    = pca.explained_variance_
+        evr    = pca.explained_variance_ratio_
 
-        evr_pad     = np.zeros(N_COMPONENTS); evr_pad[:n] = evr
-        probs       = eig / eig.sum()
-        eigen_entropy = float(-np.sum(probs * np.log(probs + 1e-12)))
-        geo_mean      = float(np.exp(np.mean(np.log(eig + 1e-12))))
-        spec_flat     = geo_mean / (float(np.mean(eig)) + 1e-12)
-        first_dom     = float(evr[0])
-        coef_var      = float(np.std(eig) / (np.mean(eig) + 1e-12))
+        pca_inv_feats = BronzeService._pca_distribution_features(eig)
 
-        def rec(k):
+        geo_mean  = float(np.exp(np.mean(np.log(eig + 1e-12))))
+        spec_flat = geo_mean / (float(np.mean(eig)) + 1e-12)
+        first_dom = float(evr[0])
+        coef_var  = float(np.std(eig) / (np.mean(eig) + 1e-12))
+
+        def _rec(k):
             sk = np.zeros_like(scores); sk[:, :k] = scores[:, :k]
             return float(np.mean((arr_gray - pca.inverse_transform(sk)) ** 2))
 
-        pca_feats = list(evr_pad) + [eigen_entropy, spec_flat, first_dom, coef_var,
-                                     rec(min(5, n)), rec(min(10, n)), rec(min(20, n))]
+        pca_scalar_feats = [spec_flat, first_dom, coef_var,
+                            _rec(min(5, n)), _rec(min(10, n)), _rec(min(20, n))]
 
         color_feats = []
         for c in range(3):
             ch = arr_rgb[:, :, c].ravel()
-            color_feats += [
-                float(np.mean(ch)), float(np.std(ch)),
-                float(np.mean((ch - ch.mean())**3) / (ch.std()**3 + 1e-12)),
-                float(np.mean((ch - ch.mean())**4) / (ch.std()**4 + 1e-12)),
-            ]
+            mu = ch.mean(); sd = ch.std() + 1e-12
+            color_feats += [float(mu), float(sd),
+                            float(np.mean(((ch - mu) / sd) ** 3)),
+                            float(np.mean(((ch - mu) / sd) ** 4))]
 
         try:
-            arr_hsv   = np.array(img_rgb.convert('HSV'), dtype=np.float64) / 255.0
-            hsv_feats = [float(np.mean(arr_hsv[:, :, c])) for c in range(3)] + \
-                        [float(np.std(arr_hsv[:, :, c]))  for c in range(3)]
+            arr_hsv = np.array(
+                Image.open(_BytesIO(image_bytes)).convert('RGB').resize(RESIZE_TO).convert('HSV'),
+                dtype=np.float64
+            ) / 255.0
+            hsv_feats = []
+            for c in range(3):
+                ch = arr_hsv[:, :, c].ravel()
+                hsv_feats += [float(np.mean(ch)), float(np.std(ch))]
         except Exception:
             hsv_feats = [0.0] * 6
 
@@ -181,26 +201,36 @@ class BronzeService:
         fft_feats = [e_low/e_tot, e_mid/e_tot, e_high/e_tot,
                      e_high/(e_low + 1e-12), float(np.std(np.log1p(fft_mag)))]
 
-        return pca_feats + color_feats + hsv_feats + fft_feats
+        result = np.array(pca_inv_feats + pca_scalar_feats + color_feats + hsv_feats + fft_feats,
+                          dtype=np.float32)
+        return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
 
     @staticmethod
-    async def pca_anomaly(file: UploadFile):
-        THRESHOLD  = 0.80
-        MODEL_PATH = 'modelos/PCA_anomaly/modelo_pca_v2.pkl'
+    async def freq_cor(file: UploadFile):
+        MODEL_PATH     = 'modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl'
+        SCALER_PATH    = 'modelos/Frequencia_Cor/scaler_freq_cor.pkl'
+        THRESHOLD_PATH = 'modelos/Frequencia_Cor/threshold.json'
 
-        contents = await file.read()
-        features = BronzeService._extract_pca_v2_features(contents)
+        contents  = await file.read()
+        features  = BronzeService._extract_freq_cor_features(contents)
+        artifacts = joblib.load(MODEL_PATH)
+        scaler    = joblib.load(SCALER_PATH)
 
-        model      = joblib.load(MODEL_PATH)
-        proba      = model.predict_proba([features])[0]
-        prediction = int(model.predict([features])[0])
-        confidence = float(max(proba))
-        label      = "IA" if prediction == 1 else "REAL"
-        status     = "CONCLUSIVO" if confidence >= THRESHOLD else "INCERTO — passar para próximo check"
+        with open(THRESHOLD_PATH) as f:
+            threshold = json.load(f)['threshold']
+
+        feat_scaled = scaler.transform([features])
+        raw_proba   = artifacts['xgb_model'].predict_proba(feat_scaled)[0, 1]
+        prob_ia     = float(artifacts['calibrator'].transform([raw_proba])[0])
+        prob_real   = float(1.0 - prob_ia)
+        prediction  = 1 if prob_ia >= threshold else 0
+        confidence  = prob_ia if prediction == 1 else prob_real
+        label       = "IA" if prediction == 1 else "REAL"
+        status      = "CONCLUSIVO" if confidence >= threshold else "INCERTO — passar para próximo check"
 
         return {
-            "label": label, "confidence": confidence, "status": status,
-            "prob_real": float(proba[0]), "prob_ia": float(proba[1]),
+            "label": label, "confidence": round(confidence, 4), "status": status,
+            "prob_real": round(prob_real, 4), "prob_ia": round(prob_ia, 4),
         }
 
     # ── Luminescência ─────────────────────────────────────────────────────────
@@ -430,11 +460,17 @@ class BronzeService:
             image        = None
             meta_check   = {"has_ai_indicators": False, "indicators": []}
 
-        # PCA v2
-        pca_feat  = BronzeService._extract_pca_v2_features(contents)
-        pca_model = joblib.load('modelos/PCA_anomaly/modelo_pca_v2.pkl')
-        pca_proba = pca_model.predict_proba([pca_feat])[0]
-        pca_pred  = int(pca_model.predict([pca_feat])[0])
+        # Frequencia_Cor
+        fc_feat      = BronzeService._extract_freq_cor_features(contents)
+        fc_artifacts = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
+        fc_scaler    = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
+        with open('modelos/Frequencia_Cor/threshold.json') as _f:
+            fc_threshold = json.load(_f)['threshold']
+        fc_scaled    = fc_scaler.transform([fc_feat])
+        fc_raw       = fc_artifacts['xgb_model'].predict_proba(fc_scaled)[0, 1]
+        fc_prob_ia   = float(fc_artifacts['calibrator'].transform([fc_raw])[0])
+        fc_proba     = np.array([1.0 - fc_prob_ia, fc_prob_ia])
+        fc_pred      = int(fc_prob_ia >= fc_threshold)
 
         # Luminescência
         lum_feat   = BronzeService._extract_luminance_features(contents)
@@ -450,8 +486,8 @@ class BronzeService:
         ruido_pred  = int(ruido_model.predict([ruido_feat])[0])
 
         # Ensemble — média simples das probabilidades
-        prob_ia   = float((pca_proba[1] + lum_proba[1] + ruido_proba[1]) / 3)
-        prob_real = float((pca_proba[0] + lum_proba[0] + ruido_proba[0]) / 3)
+        prob_ia   = float((fc_proba[1] + lum_proba[1] + ruido_proba[1]) / 3)
+        prob_real = float((fc_proba[0] + lum_proba[0] + ruido_proba[0]) / 3)
         ensemble_pred = 1 if prob_ia >= 0.5 else 0
         ensemble_conf = float(max(prob_ia, prob_real))
         ensemble_label = "IA" if ensemble_pred == 1 else "REAL"
@@ -467,9 +503,9 @@ class BronzeService:
         return {
             "metadata": meta_check,
             "modelos": {
-                "pca_v2":       _model_result(pca_pred,   pca_proba),
-                "luminescencia": _model_result(lum_pred,   lum_proba),
-                "ruido":        _model_result(ruido_pred, ruido_proba),
+                "frequencia_cor": _model_result(fc_pred,    fc_proba),
+                "luminescencia":  _model_result(lum_pred,   lum_proba),
+                "ruido":          _model_result(ruido_pred, ruido_proba),
             },
             "ensemble": {
                 "label":      ensemble_label,
@@ -519,9 +555,15 @@ class BronzeService:
             meta_check = {"has_ai_indicators": False, "indicators": []}
 
         # Modelos base — extrai features e probabilidades
-        pca_feat  = BronzeService._extract_pca_v2_features(contents)
-        pca_model = joblib.load('modelos/PCA_anomaly/modelo_pca_v2.pkl')
-        pca_proba = pca_model.predict_proba([pca_feat])[0]
+        fc_feat      = BronzeService._extract_freq_cor_features(contents)
+        fc_artifacts = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
+        fc_scaler    = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
+        with open('modelos/Frequencia_Cor/threshold.json') as _f:
+            fc_threshold = json.load(_f)['threshold']
+        fc_scaled  = fc_scaler.transform([fc_feat])
+        fc_raw     = fc_artifacts['xgb_model'].predict_proba(fc_scaled)[0, 1]
+        fc_prob_ia = float(fc_artifacts['calibrator'].transform([fc_raw])[0])
+        fc_proba   = np.array([1.0 - fc_prob_ia, fc_prob_ia])
 
         lum_feat   = BronzeService._extract_luminance_features(contents)
         lum_scaler = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
@@ -533,8 +575,8 @@ class BronzeService:
         ruido_proba = ruido_model.predict_proba([ruido_feat])[0]
 
         # Consenso — média das probabilidades dos 3 modelos base
-        prob_ia   = round(float((pca_proba[1] + lum_proba[1] + ruido_proba[1]) / 3), 4)
-        prob_real = round(float((pca_proba[0] + lum_proba[0] + ruido_proba[0]) / 3), 4)
+        prob_ia   = round(float((fc_proba[1] + lum_proba[1] + ruido_proba[1]) / 3), 4)
+        prob_real = round(float((fc_proba[0] + lum_proba[0] + ruido_proba[0]) / 3), 4)
         label      = "IA" if prob_ia >= 0.5 else "REAL"
         confidence = prob_ia if label == "IA" else prob_real
         escalate   = confidence < CONCLUSIVO_THRESHOLD
@@ -560,9 +602,9 @@ class BronzeService:
             "escalate":   escalate,
             "metadata":   meta_check,
             "modelos_base": {
-                "pca_v2":        _base_result(pca_proba),
-                "luminescencia": _base_result(lum_proba),
-                "ruido":         _base_result(ruido_proba),
+                "frequencia_cor": _base_result(fc_proba),
+                "luminescencia":  _base_result(lum_proba),
+                "ruido":          _base_result(ruido_proba),
             },
         }
 

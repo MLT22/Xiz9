@@ -25,11 +25,11 @@ async def get_image_metadata(file: UploadFile = File(...)):
     return JSONResponse(content=metadata)
 
 
-@bronze_router.post("/PCA_anomaly")
-async def pca_anomaly(file: UploadFile = File(...)):
+@bronze_router.post("/frequencia_cor")
+async def freq_cor(file: UploadFile = File(...)):
     _validate(file)
     try:
-        result = await BronzeService.pca_anomaly(file)
+        result = await BronzeService.freq_cor(file)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return JSONResponse(content=result)
