@@ -141,7 +141,7 @@ class BronzeService:
     def _extract_freq_cor_features(image_bytes: bytes):
         from io import BytesIO as _BytesIO
         N_PCA_COMP = 30
-        RESIZE_TO  = (128, 128)
+        RESIZE_TO  = (256, 256)
 
         img_rgb  = Image.open(_BytesIO(image_bytes)).convert('RGB').resize(RESIZE_TO)
         img_gray = img_rgb.convert('L')
@@ -477,16 +477,17 @@ class BronzeService:
             meta_check   = {"has_ai_indicators": False, "indicators": []}
 
         # Frequencia_Cor
-        fc_feat      = BronzeService._extract_freq_cor_features(contents)
-        fc_artifacts = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
-        fc_scaler    = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
+        fc_feat       = BronzeService._extract_freq_cor_features(contents)
+        fc_model      = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
+        fc_scaler     = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
+        fc_calibrator = joblib.load('modelos/Frequencia_Cor/calibrator_freq_cor.pkl')
         with open('modelos/Frequencia_Cor/threshold.json') as _f:
             fc_threshold = json.load(_f)['threshold']
-        fc_scaled    = fc_scaler.transform([fc_feat])
-        fc_raw       = fc_artifacts['xgb_model'].predict_proba(fc_scaled)[0, 1]
-        fc_prob_ia   = float(fc_artifacts['calibrator'].transform([fc_raw])[0])
-        fc_proba     = np.array([1.0 - fc_prob_ia, fc_prob_ia])
-        fc_pred      = int(fc_prob_ia >= fc_threshold)
+        fc_scaled   = fc_scaler.transform([fc_feat])
+        fc_raw      = fc_model.predict_proba(fc_scaled)[0, 1]
+        fc_prob_ia  = float(fc_calibrator.predict([fc_raw])[0])
+        fc_proba    = np.array([1.0 - fc_prob_ia, fc_prob_ia])
+        fc_pred     = int(fc_prob_ia >= fc_threshold)
 
         # Luminescência
         lum_feat      = BronzeService._extract_luminance_features(contents)
@@ -578,14 +579,15 @@ class BronzeService:
             meta_check = {"has_ai_indicators": False, "indicators": []}
 
         # Modelos base — extrai features e probabilidades
-        fc_feat      = BronzeService._extract_freq_cor_features(contents)
-        fc_artifacts = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
-        fc_scaler    = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
+        fc_feat       = BronzeService._extract_freq_cor_features(contents)
+        fc_model      = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
+        fc_scaler     = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
+        fc_calibrator = joblib.load('modelos/Frequencia_Cor/calibrator_freq_cor.pkl')
         with open('modelos/Frequencia_Cor/threshold.json') as _f:
             fc_threshold = json.load(_f)['threshold']
         fc_scaled  = fc_scaler.transform([fc_feat])
-        fc_raw     = fc_artifacts['xgb_model'].predict_proba(fc_scaled)[0, 1]
-        fc_prob_ia = float(fc_artifacts['calibrator'].transform([fc_raw])[0])
+        fc_raw     = fc_model.predict_proba(fc_scaled)[0, 1]
+        fc_prob_ia = float(fc_calibrator.predict([fc_raw])[0])
         fc_proba   = np.array([1.0 - fc_prob_ia, fc_prob_ia])
 
         lum_feat      = BronzeService._extract_luminance_features(contents)
