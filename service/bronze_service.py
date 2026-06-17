@@ -207,21 +207,23 @@ class BronzeService:
 
     @staticmethod
     async def freq_cor(file: UploadFile):
-        MODEL_PATH     = 'modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl'
-        SCALER_PATH    = 'modelos/Frequencia_Cor/scaler_freq_cor.pkl'
-        THRESHOLD_PATH = 'modelos/Frequencia_Cor/threshold.json'
+        MODEL_PATH      = 'modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl'
+        SCALER_PATH     = 'modelos/Frequencia_Cor/scaler_freq_cor.pkl'
+        CALIBRATOR_PATH = 'modelos/Frequencia_Cor/calibrator_freq_cor.pkl'
+        THRESHOLD_PATH  = 'modelos/Frequencia_Cor/threshold.json'
 
         contents  = await file.read()
         features  = BronzeService._extract_freq_cor_features(contents)
-        artifacts = joblib.load(MODEL_PATH)
+        model     = joblib.load(MODEL_PATH)
         scaler    = joblib.load(SCALER_PATH)
+        calibrator = joblib.load(CALIBRATOR_PATH)
 
         with open(THRESHOLD_PATH) as f:
             threshold = json.load(f)['threshold']
 
         feat_scaled = scaler.transform([features])
-        raw_proba   = artifacts['xgb_model'].predict_proba(feat_scaled)[0, 1]
-        prob_ia     = float(artifacts['calibrator'].transform([raw_proba])[0])
+        raw_proba   = model.predict_proba(feat_scaled)[0, 1]
+        prob_ia     = float(calibrator.transform([raw_proba])[0])
         prob_real   = float(1.0 - prob_ia)
         prediction  = 1 if prob_ia >= threshold else 0
         confidence  = prob_ia if prediction == 1 else prob_real
@@ -483,11 +485,11 @@ class BronzeService:
         fc_calibrator = joblib.load('modelos/Frequencia_Cor/calibrator_freq_cor.pkl')
         with open('modelos/Frequencia_Cor/threshold.json') as _f:
             fc_threshold = json.load(_f)['threshold']
-        fc_scaled   = fc_scaler.transform([fc_feat])
-        fc_raw      = fc_model.predict_proba(fc_scaled)[0, 1]
-        fc_prob_ia  = float(fc_calibrator.predict([fc_raw])[0])
-        fc_proba    = np.array([1.0 - fc_prob_ia, fc_prob_ia])
-        fc_pred     = int(fc_prob_ia >= fc_threshold)
+            fc_scaled    = fc_scaler.transform([fc_feat])
+            fc_raw       = fc_model.predict_proba(fc_scaled)[0, 1]
+            fc_prob_ia   = float(fc_calibrator.transform([fc_raw])[0])
+            fc_proba     = np.array([1.0 - fc_prob_ia, fc_prob_ia])
+            fc_pred      = int(fc_prob_ia >= fc_threshold)
 
         # Luminescência
         lum_feat      = BronzeService._extract_luminance_features(contents)
@@ -587,7 +589,8 @@ class BronzeService:
             fc_threshold = json.load(_f)['threshold']
         fc_scaled  = fc_scaler.transform([fc_feat])
         fc_raw     = fc_model.predict_proba(fc_scaled)[0, 1]
-        fc_prob_ia = float(fc_calibrator.predict([fc_raw])[0])
+        fc_prob_ia = float(fc_calibrator.transform([fc_raw])[0])
+
         fc_proba   = np.array([1.0 - fc_prob_ia, fc_prob_ia])
 
         lum_feat      = BronzeService._extract_luminance_features(contents)
