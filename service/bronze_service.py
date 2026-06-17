@@ -9,117 +9,7 @@ from sklearn.decomposition import PCA
 from fastapi import UploadFile
 from PIL import Image, PngImagePlugin
 
-
-_AI_KEYWORDS = [
-    "stable diffusion", "stablediffusion", "automatic1111", "a1111",
-    "comfyui", "comfy ui", "novelai", "invokeai", "midjourney",
-    "dall-e", "dalle", "firefly", "adobe firefly", "imagen",
-    "dreamstudio", "openjourney", "kandinsky", "chatgpt"
-]
-
-_AI_PNG_KEYS = {"parameters", "workflow", "prompt", "invokeai_metadata", "sd-metadata"}
-
-
 class BronzeService:
-    
-    # ── Metadados ─────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def extract_metadata(filename: str, content_type: str, contents: bytes) -> dict:
-        try:
-            image = Image.open(io.BytesIO(contents))
-        except Exception:
-            raise ValueError("Não foi possível processar o arquivo como imagem.")
-
-        width, height = image.size
-        return {
-            "filename": filename,
-            "content_type": content_type,
-            "file_size_bytes": len(contents),
-            "format": image.format,
-            "mode": image.mode,
-            "width": width,
-            "height": height,
-            "aspect_ratio": round(width / height, 4) if height else None,
-            "is_animated": getattr(image, "is_animated", False),
-            "frames": getattr(image, "n_frames", 1),
-            "exif": BronzeService._extract_all_metadata(image, contents),
-        }
-
-    @staticmethod
-    def _extract_all_metadata(image: Image.Image, contents: bytes) -> dict:
-        all_metadata = {}
-
-        if isinstance(image, PngImagePlugin.PngImageFile):
-            png_info = image.info or {}
-            for key, value in png_info.items():
-                if isinstance(value, bytes):
-                    try:
-                        all_metadata[key] = value.decode("utf-8", errors="replace")
-                    except Exception:
-                        all_metadata[key] = repr(value)
-                elif isinstance(value, str):
-                    try:
-                        all_metadata[key] = json.loads(value)
-                    except (json.JSONDecodeError, TypeError):
-                        all_metadata[key] = value
-                else:
-                    all_metadata[key] = value
-
-        try:
-            exif_bytes = image.info.get("exif")
-            if exif_bytes:
-                exif_dict = piexif.load(exif_bytes)
-                for ifd_name, ifd_data in exif_dict.items():
-                    if not isinstance(ifd_data, dict):
-                        continue
-                    for tag_id, value in ifd_data.items():
-                        tag_name = piexif.TAGS[ifd_name].get(tag_id, {}).get("name", str(tag_id))
-                        if isinstance(value, bytes):
-                            value = value.decode("utf-8", errors="replace").strip("\x00")
-                        all_metadata.setdefault("exif_piexif", {})[tag_name] = value
-        except Exception:
-            pass
-
-        xmp = image.info.get("xmp") or image.info.get("XML:com.adobe.xmp")
-        if xmp:
-            if isinstance(xmp, bytes):
-                xmp = xmp.decode("utf-8", errors="replace")
-            all_metadata["xmp"] = xmp
-
-        return all_metadata
-
-    @staticmethod
-    def check_metadata_ai_indicators(image: Image.Image, raw_metadata: dict) -> dict:
-        indicators = []
-
-        # Chaves PNG exclusivas de geradores de IA
-        if isinstance(image, PngImagePlugin.PngImageFile):
-            found_keys = _AI_PNG_KEYS & set(image.info.keys())
-            for k in found_keys:
-                indicators.append(f"PNG key '{k}' encontrada (comum em SD/ComfyUI)")
-
-        # Varredura por keywords em todos os valores de metadados
-        def _search(obj, path=""):
-            if isinstance(obj, str):
-                low = obj.lower()
-                for kw in _AI_KEYWORDS:
-                    if kw in low:
-                        indicators.append(f"Keyword '{kw}' em {path}")
-                        return
-            elif isinstance(obj, dict):
-                for k, v in obj.items():
-                    _search(v, path=f"{path}.{k}" if path else k)
-            elif isinstance(obj, list):
-                for i, v in enumerate(obj):
-                    _search(v, path=f"{path}[{i}]")
-
-        _search(raw_metadata)
-
-        return {
-            "has_ai_indicators": len(indicators) > 0,
-            "indicators": indicators,
-        }
 
     # ── Frequencia_Cor (FFT + cor RGB/HSV + estatísticas PCA invariantes) ────────
 
@@ -461,84 +351,75 @@ class BronzeService:
             "prob_real": float(proba[0]), "prob_ia": float(proba[1]),
         }
 
-    # ── Assembly (metadados + ensemble dos 3 modelos) ─────────────────────────
+    # ── Ensamble (ensemble dos 3 modelos) ─────────────────────────
+
+    def _model_result(pred, proba):
+                conf  = float(max(proba))
+                label = "IA" if pred == 1 else "REAL"
+                return {
+                    "label": label, "confidence": conf,
+                    "prob_real": float(proba[0]), "prob_ia": float(proba[1]),
+                }
 
     @staticmethod
-    async def assembly(file: UploadFile):
+    async def ensamble(file: UploadFile):
         THRESHOLD = 0.80
 
         contents = await file.read()
-
-        # Metadados
-        try:
-            image        = Image.open(io.BytesIO(contents))
-            raw_metadata = BronzeService._extract_all_metadata(image, contents)
-            meta_check   = BronzeService.check_metadata_ai_indicators(image, raw_metadata)
-        except Exception:
-            image        = None
-            meta_check   = {"has_ai_indicators": False, "indicators": []}
+        image = Image.open(io.BytesIO(contents))
 
         # Frequencia_Cor
-        fc_feat       = BronzeService._extract_freq_cor_features(contents)
-        fc_model      = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
-        fc_scaler     = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
+        fc_feat = BronzeService._extract_freq_cor_features(contents)
+        fc_model = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
+        fc_scaler = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
         fc_calibrator = joblib.load('modelos/Frequencia_Cor/calibrator_freq_cor.pkl')
         with open('modelos/Frequencia_Cor/threshold.json') as _f:
             fc_threshold = json.load(_f)['threshold']
-            fc_scaled    = fc_scaler.transform([fc_feat])
-            fc_raw       = fc_model.predict_proba(fc_scaled)[0, 1]
-            fc_prob_ia   = float(fc_calibrator.transform([fc_raw])[0])
-            fc_proba     = np.array([1.0 - fc_prob_ia, fc_prob_ia])
-            fc_pred      = int(fc_prob_ia >= fc_threshold)
+            fc_scaled = fc_scaler.transform([fc_feat])
+            fc_raw = fc_model.predict_proba(fc_scaled)[0, 1]
+            fc_prob_ia = float(fc_calibrator.transform([fc_raw])[0])
+            fc_proba = np.array([1.0 - fc_prob_ia, fc_prob_ia])
+            fc_pred = int(fc_prob_ia >= fc_threshold)
 
         # Luminescência
-        lum_feat      = BronzeService._extract_luminance_features(contents)
-        lum_scaler    = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
-        lum_model     = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
+        lum_feat = BronzeService._extract_luminance_features(contents)
+        lum_scaler = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
+        lum_model = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
         lum_calibrator = joblib.load('modelos/Luminescencia/calibrator_luminance.pkl')
         with open('modelos/Luminescencia/threshold.json') as f:
             lum_threshold = json.load(f)['threshold']
 
-        lum_feat_s    = lum_scaler.transform([lum_feat])
+        lum_feat_s = lum_scaler.transform([lum_feat])
         lum_proba_raw = lum_model.predict_proba(lum_feat_s)[0]
         lum_proba_cal = lum_calibrator.predict(lum_proba_raw[1:2])
-        lum_proba     = np.array([1 - lum_proba_cal[0], lum_proba_cal[0]])
-        lum_pred      = int(lum_proba[1] >= lum_threshold)
+        lum_proba = np.array([1 - lum_proba_cal[0], lum_proba_cal[0]])
+        lum_pred = int(lum_proba[1] >= lum_threshold)
 
         # Ruído
-        ruido_feat  = BronzeService._extract_ruido_features(contents)
+        ruido_feat = BronzeService._extract_ruido_features(contents)
         ruido_model = joblib.load('modelos/Ruido/modelo_ruido.pkl')
         ruido_proba = ruido_model.predict_proba([ruido_feat])[0]
-        ruido_pred  = int(ruido_model.predict([ruido_feat])[0])
+        ruido_pred = int(ruido_model.predict([ruido_feat])[0])
 
         # Ensemble — média simples das probabilidades
-        prob_ia   = float((fc_proba[1] + lum_proba[1] + ruido_proba[1]) / 3)
+        prob_ia = float((fc_proba[1] + lum_proba[1] + ruido_proba[1]) / 3)
         prob_real = float((fc_proba[0] + lum_proba[0] + ruido_proba[0]) / 3)
         ensemble_pred = 1 if prob_ia >= 0.5 else 0
         ensemble_conf = float(max(prob_ia, prob_real))
         ensemble_label = "IA" if ensemble_pred == 1 else "REAL"
 
-        def _model_result(pred, proba):
-            conf  = float(max(proba))
-            label = "IA" if pred == 1 else "REAL"
-            return {
-                "label": label, "confidence": conf,
-                "prob_real": float(proba[0]), "prob_ia": float(proba[1]),
-            }
-
         return {
-            "metadata": meta_check,
             "modelos": {
                 "frequencia_cor": _model_result(fc_pred,    fc_proba),
-                "luminescencia":  _model_result(lum_pred,   lum_proba),
-                "ruido":          _model_result(ruido_pred, ruido_proba),
+                "luminescencia": _model_result(lum_pred,   lum_proba),
+                "ruido": _model_result(ruido_pred, ruido_proba),
             },
             "ensemble": {
-                "label":      ensemble_label,
+                "label": ensemble_label,
                 "confidence": ensemble_conf,
-                "prob_real":  prob_real,
-                "prob_ia":    prob_ia,
-                "status":     "CONCLUSIVO" if ensemble_conf >= THRESHOLD else "INCERTO",
+                "prob_real": prob_real,
+                "prob_ia": prob_ia,
+                "status": "CONCLUSIVO" if ensemble_conf >= THRESHOLD else "INCERTO",
             },
         }
     
@@ -567,81 +448,70 @@ class BronzeService:
             mean_p_ia, float(max(all_probs)), float(min(all_probs)),
         ]
 
+
     @staticmethod
     async def avaliacao_geral(file: UploadFile):
         CONCLUSIVO_THRESHOLD = 0.75
         contents = await file.read()
+        image = Image.open(io.BytesIO(contents))
 
-        # Metadados
-        try:
-            image        = Image.open(io.BytesIO(contents))
-            raw_metadata = BronzeService._extract_all_metadata(image, contents)
-            meta_check   = BronzeService.check_metadata_ai_indicators(image, raw_metadata)
-        except Exception:
-            meta_check = {"has_ai_indicators": False, "indicators": []}
 
         # Modelos base — extrai features e probabilidades
-        fc_feat       = BronzeService._extract_freq_cor_features(contents)
-        fc_model      = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
-        fc_scaler     = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
+        fc_feat = BronzeService._extract_freq_cor_features(contents)
+        fc_model = joblib.load('modelos/Frequencia_Cor/modelo_freq_cor_v1.pkl')
+        fc_scaler = joblib.load('modelos/Frequencia_Cor/scaler_freq_cor.pkl')
         fc_calibrator = joblib.load('modelos/Frequencia_Cor/calibrator_freq_cor.pkl')
         with open('modelos/Frequencia_Cor/threshold.json') as _f:
             fc_threshold = json.load(_f)['threshold']
-        fc_scaled  = fc_scaler.transform([fc_feat])
-        fc_raw     = fc_model.predict_proba(fc_scaled)[0, 1]
+        fc_scaled = fc_scaler.transform([fc_feat])
+        fc_raw = fc_model.predict_proba(fc_scaled)[0, 1]
         fc_prob_ia = float(fc_calibrator.transform([fc_raw])[0])
 
         fc_proba   = np.array([1.0 - fc_prob_ia, fc_prob_ia])
 
-        lum_feat      = BronzeService._extract_luminance_features(contents)
-        lum_scaler    = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
-        lum_model     = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
+        lum_feat = BronzeService._extract_luminance_features(contents)
+        lum_scaler = joblib.load('modelos/Luminescencia/scaler_luminance.pkl')
+        lum_model = joblib.load('modelos/Luminescencia/svm_luminance.pkl')
         lum_calibrator = joblib.load('modelos/Luminescencia/calibrator_luminance.pkl')
         with open('modelos/Luminescencia/threshold.json') as f:
             lum_threshold = json.load(f)['threshold']
 
-        lum_feat_s    = lum_scaler.transform([lum_feat])
+        lum_feat_s = lum_scaler.transform([lum_feat])
         lum_proba_raw = lum_model.predict_proba(lum_feat_s)[0]
         lum_proba_cal = lum_calibrator.predict(lum_proba_raw[1:2])
-        lum_proba     = np.array([1 - lum_proba_cal[0], lum_proba_cal[0]])
+        lum_proba  = np.array([1 - lum_proba_cal[0], lum_proba_cal[0]])
 
-        ruido_feat  = BronzeService._extract_ruido_features(contents)
+        ruido_feat = BronzeService._extract_ruido_features(contents)
         ruido_model = joblib.load('modelos/Ruido/modelo_ruido.pkl')
         ruido_proba = ruido_model.predict_proba([ruido_feat])[0]
 
         # Consenso — média das probabilidades dos 3 modelos base
         # Luminescência usa threshold calibrado; PCA e Ruído usam 0.5
-        lum_pred   = int(lum_proba[1] >= lum_threshold)
-        prob_ia   = round(float((fc_proba[1] + lum_proba[1] + ruido_proba[1]) / 3), 4)
+        lum_pred = int(lum_proba[1] >= lum_threshold)
+        prob_ia = round(float((fc_proba[1] + lum_proba[1] + ruido_proba[1]) / 3), 4)
         prob_real = round(float((fc_proba[0] + lum_proba[0] + ruido_proba[0]) / 3), 4)
-        label      = "IA" if prob_ia >= 0.5 else "REAL"
+        label = "IA" if prob_ia >= 0.5 else "REAL"
         confidence = prob_ia if label == "IA" else prob_real
-        escalate   = confidence < CONCLUSIVO_THRESHOLD
-
-        # Metadados com indicadores de IA são sempre conclusivos
-        if meta_check.get("has_ai_indicators"):
-            label      = "IA"
-            confidence = 0.99
-            escalate   = False
+        escalate = confidence < CONCLUSIVO_THRESHOLD
 
         def _base_result(proba):
             return {
-                "label":     "IA" if proba[1] > 0.5 else "REAL",
+                "label": "IA" if proba[1] > 0.5 else "REAL",
                 "prob_real": round(float(proba[0]), 4),
-                "prob_ia":   round(float(proba[1]), 4),
+                "prob_ia": round(float(proba[1]), 4),
             }
 
+
         return {
-            "label":      label,
+            "label": label,
             "confidence": round(confidence, 4),
-            "prob_real":  prob_real,
-            "prob_ia":    prob_ia,
-            "escalate":   escalate,
-            "metadata":   meta_check,
+            "prob_real": prob_real,
+            "prob_ia": prob_ia,
+            "escalate": escalate,
             "modelos_base": {
                 "frequencia_cor": _base_result(fc_proba),
                 "luminescencia":  _base_result(lum_proba),
-                "ruido":          _base_result(ruido_proba),
+                "ruido": _base_result(ruido_proba),
             },
         }
 
