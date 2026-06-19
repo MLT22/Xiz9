@@ -96,6 +96,52 @@
   .popup-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--gray); }
   .popup-close:hover { color: var(--night); }
 
+  /* Botão análise completa */
+  .btn-detalhes {
+    background: none;
+    border: none;
+    color: var(--dusk);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    margin-top: 12px;
+    text-decoration: none;
+    letter-spacing: .3px;
+  }
+  .btn-detalhes:hover { color: var(--night); }
+  .btn-detalhes .arrow { display: inline-block; transition: transform .25s; font-size: 10px; }
+  .btn-detalhes.open .arrow { transform: rotate(180deg); }
+
+  /* Seção de detalhes expansível */
+  .detalhes-section {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height .4s ease, opacity .3s ease;
+    opacity: 0;
+  }
+  .detalhes-section.show {
+    max-height: 2000px;
+    opacity: 1;
+  }
+  .detalhes-divider {
+    height: 1px;
+    background: var(--mist);
+    margin: 14px 0 16px;
+  }
+  .detalhes-label {
+    font-size: 11px;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
   /* Cards */
   .algo-card { border: 1.5px solid var(--mist); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
   .algo-card:last-child { margin-bottom: 0; }
@@ -121,7 +167,6 @@
   .algo-status { font-size: 11px; color: var(--gray); }
   .algo-status span { font-weight: 500; color: var(--text); }
 
-  /* Metadata grid */
   .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .meta-item { font-size: 11px; }
   .meta-item .meta-key { color: var(--gray); margin-bottom: 1px; }
@@ -272,7 +317,7 @@
     });
   });
 
-  let activeImageBlob = null; // null = usa Coberta_nuvem.png (padrão)
+  let activeImageBlob = null;
 
   function onImageChange(event) {
     const file = event.target.files[0];
@@ -297,14 +342,14 @@
     const probReal = (r.prob_real * 100).toFixed(1);
     const conf     = (r.confidence * 100).toFixed(1);
     const escalateHTML = r.escalate
-      ? `<div class="exif-note suspeito" style="margin-top:10px;background:#fff8e1;color:#f57f17">
+      ? `<div class="exif-note" style="margin-top:10px;background:#fff8e1;color:#f57f17">
           Confiança insuficiente — requer análise na próxima camada
          </div>`
       : '';
     return `
       <div class="algo-card" style="border-color:${r.label === 'IA' ? 'var(--red)' : 'var(--green)'}">
         <div class="algo-header">
-          <span class="algo-name" style="font-size:14px;font-weight:600">Veredicto Bronze</span>
+          <span class="algo-name" style="font-size:14px;font-weight:600">Veredicto</span>
           <span class="algo-tag ${cls}" style="font-size:12px;padding:4px 14px">${r.label}</span>
         </div>
         <div class="algo-bars">
@@ -333,7 +378,7 @@
             <span class="algo-tag ia">IA Detectada</span>
           </div>
           <div class="exif-note suspeito" style="margin-bottom:8px">
-            Indicadores de IA encontrados nos metadados — alta certeza (~99%)
+            Indicadores de IA encontrados nos metadados
           </div>
           <ul style="font-size:11px;color:var(--red);padding-left:16px;margin:0">${lista}</ul>
         </div>`;
@@ -349,7 +394,7 @@
   }
 
   function cardBaseHTML(nome, r) {
-    const cls    = r.label === 'IA' ? 'ia' : 'real';
+    const cls      = r.label === 'IA' ? 'ia' : 'real';
     const probIA   = (r.prob_ia   * 100).toFixed(1);
     const probReal = (r.prob_real * 100).toFixed(1);
     return `
@@ -371,6 +416,21 @@
       </div>`;
   }
 
+  function toggleDetalhes() {
+    const sec = document.getElementById('detalhes-section');
+    const btn = document.getElementById('btn-detalhes');
+    const isOpen = sec.classList.contains('show');
+    if (isOpen) {
+      sec.classList.remove('show');
+      btn.classList.remove('open');
+      btn.innerHTML = 'análise completa <span class="arrow">▼</span>';
+    } else {
+      sec.classList.add('show');
+      btn.classList.add('open');
+      btn.innerHTML = 'ocultar detalhes <span class="arrow">▼</span>';
+    }
+  }
+
   async function analyseImage() {
     const btn = document.getElementById('btnAnalyse');
     btn.disabled = true;
@@ -390,17 +450,29 @@
 
     try {
       const formData = new FormData();
-      formData.append('file', blob, 'Coberta_nuvem.png');
+      formData.append('file', blob, 'imagem.png');
       const resp = await fetch('http://127.0.0.1:8000/bronze/avaliacao_geral', { method: 'POST', body: formData });
       const r    = await resp.json();
 
       const bases = r.modelos_base || {};
-      document.getElementById('popup-body').innerHTML =
-        cardVeredictoHTML(r) +
+
+      const detalhesHTML =
         cardMetadadosHTML(r.metadata) +
-        cardBaseHTML('Frequência',    bases.frequencia_cor        || {label:'—', prob_ia:0, prob_real:0}) +
+        (bases.frequencia_cor ? cardBaseHTML('Frequência', bases.frequencia_cor) : '') +
         cardBaseHTML('Luminescência',   bases.luminescencia || {label:'—', prob_ia:0, prob_real:0}) +
         cardBaseHTML('Ruído (DCT+SRM)', bases.ruido         || {label:'—', prob_ia:0, prob_real:0});
+
+      document.getElementById('popup-body').innerHTML = `
+        ${cardVeredictoHTML(r)}
+        <button class="btn-detalhes" id="btn-detalhes" onclick="toggleDetalhes()">
+          análise completa <span class="arrow">▼</span>
+        </button>
+        <div class="detalhes-section" id="detalhes-section">
+          <div class="detalhes-divider"></div>
+          <div class="detalhes-label">Análise por algoritmo</div>
+          ${detalhesHTML}
+        </div>
+      `;
     } catch {
       document.getElementById('popup-body').innerHTML =
         '<div style="text-align:center;color:var(--red);padding:20px">❌ Erro ao conectar com a API.</div>';
