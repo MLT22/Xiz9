@@ -247,6 +247,9 @@
 
 </div>
 
+<input type="file" id="input-post"    accept="image/*" style="display:none">
+<input type="file" id="input-comment" accept="image/*" style="display:none">
+
 <!-- POPUP -->
 <div class="overlay" id="overlay" onclick="closePopup(event)">
   <div class="popup" id="popup">
@@ -282,21 +285,18 @@
 
   function trocarImagem(imgId, inputId) {
     document.querySelectorAll('.dots-menu').forEach(m => m.classList.remove('show'));
-    let input = document.getElementById(inputId);
-    if (!input) {
-      input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.id = inputId;
-      input.style.display = 'none';
-      document.body.appendChild(input);
-    }
+    const input = document.getElementById(inputId);
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      document.getElementById(imgId).src = URL.createObjectURL(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        document.getElementById(imgId).src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
       if (imgId === 'post-img')    postBlob    = file;
       if (imgId === 'comment-img') commentBlob = file;
+      input.value = '';
     };
     input.click();
   }
