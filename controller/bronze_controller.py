@@ -1,6 +1,10 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from service.bronze_service import BronzeService
+from service.freq_cor_service import FreqCorService
+from service.luminance_service import LuminanceService
+from service.metadata_service import MetadataService
+from service.ruido_service import RuidoService
 
 bronze_router = APIRouter(prefix="/bronze", tags=["Image"])
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp", "image/tiff"}
@@ -19,7 +23,7 @@ async def get_image_metadata(file: UploadFile = File(...)):
     _validate(file)
     contents = await file.read()
     try:
-        metadata = BronzeService.extract_metadata(file.filename, file.content_type, contents)
+        metadata = MetadataService.extract(file.filename, file.content_type, contents)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return JSONResponse(content=metadata)
@@ -29,7 +33,7 @@ async def get_image_metadata(file: UploadFile = File(...)):
 async def freq_cor(file: UploadFile = File(...)):
     _validate(file)
     try:
-        result = await BronzeService.freq_cor(file)
+        result = await FreqCorService.analyze(file)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return JSONResponse(content=result)
@@ -39,7 +43,7 @@ async def freq_cor(file: UploadFile = File(...)):
 async def luminescencia(file: UploadFile = File(...)):
     _validate(file)
     try:
-        result = await BronzeService.luminance_analysis(file)
+        result = await LuminanceService.analyze(file)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return JSONResponse(content=result)
@@ -48,7 +52,7 @@ async def luminescencia(file: UploadFile = File(...)):
 async def ruido(file: UploadFile = File(...)):
     _validate(file)
     try:
-        result = await BronzeService.ruido_analysis(file)
+        result = await RuidoService.analyze(file)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return JSONResponse(content=result)
@@ -72,7 +76,3 @@ async def avaliacao_geral(file: UploadFile = File(...)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return JSONResponse(content=result)
-
-
-def __init__():
-    return
