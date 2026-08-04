@@ -10,3 +10,5 @@ scikit-learn
 xgboost
 scipy
 opencv-python-headless
+torch
+torchvision
