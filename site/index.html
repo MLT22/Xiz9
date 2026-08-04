@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xiz9 — Demonstração</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #1a2744; --dusk: #8ba4d4; --mist: #dce6f8;
+    --soft: #f7f9ff; --gold: #c9a96e; --gray: #8a96ad;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--soft);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+    padding: 40px 20px;
+  }
+
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px;
+    font-weight: 600;
+    color: var(--night);
+    letter-spacing: 2px;
+  }
+  .logo span { color: var(--dusk); }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--gray);
+    text-align: center;
+    margin-top: -36px;
+    letter-spacing: .5px;
+  }
+
+  .cards {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .card {
+    background: white;
+    border: 1.5px solid var(--mist);
+    border-radius: 20px;
+    padding: 36px 32px;
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-decoration: none;
+    transition: box-shadow .2s, transform .2s, border-color .2s;
+    cursor: pointer;
+  }
+  .card:hover {
+    box-shadow: 0 12px 32px rgba(26,39,68,.1);
+    transform: translateY(-3px);
+    border-color: var(--dusk);
+  }
+
+  .card-icon { font-size: 40px; }
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--night);
+    text-align: center;
+  }
+  .card-desc {
+    font-size: 12px;
+    color: var(--gray);
+    text-align: center;
+    line-height: 1.6;
+  }
+  .card-btn {
+    background: var(--night);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    margin-top: 8px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .card-btn.outline {
+    background: white;
+    color: var(--night);
+    border: 2px solid var(--night);
+  }
+
+  .badge {
+    font-size: 10px;
+    background: var(--mist);
+    color: var(--dusk);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+
+  footer {
+    font-size: 11px;
+    color: var(--gray);
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div>
+  <div class="logo">Xi<span>z9</span></div>
+</div>
+<p class="subtitle">Selecione o ambiente de demonstração</p>
+
+<div class="cards">
+  <a class="card" href="site.html">
+    <div class="card-icon">🛍️</div>
+    <span class="badge">E-commerce</span>
+    <div class="card-title">NuvemSoft™</div>
+    <p class="card-desc">Loja de cobertores premium com verificação de autenticidade de imagens via botão na página do produto.</p>
+    <button class="card-btn">Acessar loja</button>
+  </a>
+
+  <a class="card" href="rede_social.html">
+    <div class="card-icon">🐦</div>
+    <span class="badge">Rede Social</span>
+    <div class="card-title">Feed Social</div>
+    <p class="card-desc">Post viral de prefeitura com imagem gerada por IA. Verificação disponível nos três pontos ao lado de Seguir.</p>
+    <button class="card-btn outline">Acessar feed</button>
+  </a>
+</div>
+
+<footer>Projeto Xiz9 — IMT 2026</footer>
+
+</body>
+</html>
