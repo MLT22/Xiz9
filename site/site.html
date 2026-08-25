@@ -337,19 +337,21 @@
   }
 
   function cardVeredictoHTML(r) {
+    const decisive   = (r.camada_decisiva === 'prata' && r.prata) ? r.prata : r.bronze;
+    const camadaNome = r.camada_decisiva === 'prata' ? 'Prata (CNN EfficientNet_V2S)' : 'Bronze (ensemble)';
     const cls      = r.label === 'IA' ? 'ia' : 'real';
-    const probIA   = (r.prob_ia   * 100).toFixed(1);
-    const probReal = (r.prob_real * 100).toFixed(1);
+    const probIA   = (decisive.prob_ia   * 100).toFixed(1);
+    const probReal = (decisive.prob_real * 100).toFixed(1);
     const conf     = (r.confidence * 100).toFixed(1);
-    const escalateHTML = r.escalate
+    const escalateHTML = r.bronze.escalate
       ? `<div class="exif-note" style="margin-top:10px;background:#fff8e1;color:#f57f17">
-          Confiança insuficiente — requer análise na próxima camada
+          Bronze inconclusivo — veredito final decidido pela camada Prata
          </div>`
       : '';
     return `
       <div class="algo-card" style="border-color:${r.label === 'IA' ? 'var(--red)' : 'var(--green)'}">
         <div class="algo-header">
-          <span class="algo-name" style="font-size:14px;font-weight:600">Veredicto</span>
+          <span class="algo-name" style="font-size:14px;font-weight:600">Veredicto final</span>
           <span class="algo-tag ${cls}" style="font-size:12px;padding:4px 14px">${r.label}</span>
         </div>
         <div class="algo-bars">
@@ -362,7 +364,7 @@
             <div class="bar-track"><div class="bar-fill real" style="width:${probReal}%"></div></div>
           </div>
         </div>
-        <div class="algo-status">Confiança: <span>${conf}%</span></div>
+        <div class="algo-status">Confiança: <span>${conf}%</span> · Camada decisiva: <span>${camadaNome}</span></div>
         ${escalateHTML}
       </div>`;
   }
@@ -451,16 +453,17 @@
     try {
       const formData = new FormData();
       formData.append('file', blob, 'imagem.png');
-      const resp = await fetch('http://127.0.0.1:8000/bronze/avaliacao_geral', { method: 'POST', body: formData });
+      const resp = await fetch('http://127.0.0.1:8000/Xiz9/analise', { method: 'POST', body: formData });
       const r    = await resp.json();
 
-      const bases = r.modelos_base || {};
+      const bases = r.bronze.modelos_base || {};
 
       const detalhesHTML =
-        cardMetadadosHTML(r.metadata) +
+        cardMetadadosHTML(r.bronze.metadata) +
         (bases.frequencia_cor ? cardBaseHTML('Frequência', bases.frequencia_cor) : '') +
         cardBaseHTML('Luminescência',   bases.luminescencia || {label:'—', prob_ia:0, prob_real:0}) +
-        cardBaseHTML('Ruído (DCT+SRM)', bases.ruido         || {label:'—', prob_ia:0, prob_real:0});
+        cardBaseHTML('Ruído (DCT+SRM)', bases.ruido         || {label:'—', prob_ia:0, prob_real:0}) +
+        (r.prata ? cardBaseHTML('EfficientNet_V2S (Prata)', r.prata) : '');
 
       document.getElementById('popup-body').innerHTML = `
         ${cardVeredictoHTML(r)}

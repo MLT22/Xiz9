@@ -16,7 +16,7 @@ class PrataService:
 
     # ── EfficientNet_V2S (CNN binária: real=0 / IA=1) ───────────────────────────
 
-    _EFFICIENTNET_V2S_DIR = 'modelos/CNN/EfficientNet_V2S'
+    _EFFICIENTNET_V2S_DIR = 'modelos/EfficientNet_V2S'
     _device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     _load_lock = threading.Lock()
 
@@ -66,6 +66,10 @@ class PrataService:
     @staticmethod
     async def efficientnet_v2s(file: UploadFile):
         contents = await file.read()
+        return PrataService.predict_bytes(contents)
+
+    @staticmethod
+    def predict_bytes(contents: bytes):
         try:
             image = Image.open(io.BytesIO(contents)).convert('RGB')
         except Exception:

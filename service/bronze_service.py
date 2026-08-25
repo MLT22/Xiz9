@@ -61,9 +61,13 @@ class BronzeService:
 
     @staticmethod
     async def avaliacao_geral(file: UploadFile):
+        contents = await file.read()
+        return BronzeService.avaliacao_geral_bytes(contents)
+
+    @staticmethod
+    def avaliacao_geral_bytes(contents: bytes):
         CONCLUSIVO_THRESHOLD = 0.75
 
-        contents = await file.read()
         meta_check = MetadataService.check(contents)
 
         # Modelos base — probabilidades calibradas
