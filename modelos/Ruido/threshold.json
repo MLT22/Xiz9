@@ -1,4 +1,7 @@
 {
-  "threshold": 0.3807648718357086,
-  "metodo": "sem calibra\u00e7\u00e3o"
+  "threshold": 0.3758389353752136,
+  "classificador": "XGBoost",
+  "f1_val": 0.7440853264377768,
+  "auc_test": 0.76312573288239,
+  "acc_test": 0.6825054642354561
 }

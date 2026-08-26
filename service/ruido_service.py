@@ -26,6 +26,8 @@ class RuidoService:
 
     _PATHS = {
         "model": "modelos/Ruido/modelo_ruido.pkl",
+        "scaler": "modelos/Ruido/scaler_ruido.pkl",
+        "calibrator": "modelos/Ruido/calibrator_ruido.pkl",
         "threshold": "modelos/Ruido/threshold.json",
     }
 
@@ -38,7 +40,6 @@ class RuidoService:
         h, w = arr.shape
 
         # ── 1. Seleção de patches via DCT ─────────────────────────────────────
-        # Divide a imagem em patches e pontua cada um pela complexidade de frequência
         patches = []
         for y in range(0, h - PATCH_SIZE + 1, PATCH_SIZE):
             for x in range(0, w - PATCH_SIZE + 1, PATCH_SIZE):
@@ -47,13 +48,10 @@ class RuidoService:
         if not patches:
             return None
 
-        # Ordena e seleciona os N de menor e N de maior frequência
         patches.sort(key=lambda p: p[0])
         selected = [p for _, p in patches[:N_PATCHES]] + [p for _, p in patches[-N_PATCHES:]]
 
         # ── 2. Extração de ruído via filtros SRM (108 features) ───────────────
-        # Cada filtro captura um padrão de ruído diferente em cada patch selecionado
-        # 6 patches × 9 filtros(na interação atual) × 2 estatísticas (média + desvio) = 108 features
         features = []
         for patch in selected:
             for f in RuidoService._SRM_FILTERS:
@@ -61,8 +59,6 @@ class RuidoService:
                 features.extend([float(np.mean(np.abs(filtered))), float(np.std(filtered))])
 
         # ── 3. Estatísticas globais do ruído da imagem inteira (4 features) ───
-        # Laplacian captura a variação brusca entre pixels — ruído orgânico de câmera
-        # Imagens reais têm variância alta; imagens de IA tendem a ser mais suaves
         laplacian = cv2.Laplacian((arr * 255).astype(np.uint8), cv2.CV_64F)
         features.extend([
             float(np.var(laplacian)),
@@ -70,31 +66,39 @@ class RuidoService:
             float(np.std(laplacian)),
             float(np.percentile(np.abs(laplacian), 90)),
         ])
-        return np.array(features)
+
+        result = np.array(features, dtype=np.float32)
+        return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
 
     @staticmethod
     def predict(contents: bytes):
         paths = RuidoService._PATHS
         features = RuidoService._extract_features(contents)
         model = joblib.load(paths["model"])
+        scaler = joblib.load(paths["scaler"])
+        calibrator = joblib.load(paths["calibrator"])
 
         with open(paths["threshold"]) as f:
             threshold = json.load(f)["threshold"]
 
-        proba = model.predict_proba([features])[0]
+        feat_scaled = scaler.transform([features])
+        raw_proba = model.predict_proba(feat_scaled)[0, 1]
+        prob_ia = float(calibrator.transform([raw_proba])[0])
+        proba = np.array([1.0 - prob_ia, prob_ia])
         return proba, threshold
 
     @staticmethod
     async def analyze(file: UploadFile):
         contents = await file.read()
         proba, threshold = RuidoService.predict(contents)
+        prob_real, prob_ia = float(proba[0]), float(proba[1])
 
-        prediction = 1 if proba[1] >= threshold else 0
-        confidence = float(max(proba))
+        prediction = 1 if prob_ia >= threshold else 0
+        confidence = prob_ia if prediction == 1 else prob_real
         label = "IA" if prediction == 1 else "REAL"
         status = "CONCLUSIVO" if confidence >= threshold else "INCERTO — passar para próximo check"
 
         return {
-            "label": label, "confidence": confidence, "status": status,
-            "prob_real": float(proba[0]), "prob_ia": float(proba[1]),
+            "label": label, "confidence": round(confidence, 4), "status": status,
+            "prob_real": round(prob_real, 4), "prob_ia": round(prob_ia, 4),
         }
