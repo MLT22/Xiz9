@@ -66,7 +66,7 @@ class BronzeService:
 
     @staticmethod
     def avaliacao_geral_bytes(contents: bytes):
-        CONCLUSIVO_THRESHOLD = 0.75
+        CONCLUSIVO_THRESHOLD = 0.90
 
         meta_check = MetadataService.check(contents)
 

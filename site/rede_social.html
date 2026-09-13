@@ -120,6 +120,7 @@
   .algo-tag.ia { background: var(--red-light); color: var(--red); }
   .algo-tag.real { background: var(--green-light); color: var(--green); }
   .algo-tag.info { background: rgba(29,155,240,.15); color: var(--blue); }
+  .algo-tag.incerto { background: rgba(244,185,66,.15); color: var(--gold); }
 
   .bar-row { margin-bottom: 8px; }
   .bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--subtext); margin-bottom: 4px; }
@@ -306,20 +307,23 @@
     return `<div class="algo-card"><div class="algo-loading"><span class="mini-spinner"></span> Analisando imagem...</div></div>`;
   }
 
+  const VEREDITO_INFO = {
+    REAL:    { cls: 'real',    texto: 'Muito provável que seja real' },
+    INCERTO: { cls: 'incerto', texto: 'Incerto' },
+    IA:      { cls: 'ia',      texto: 'Muito provável que foi gerado por IA' },
+  };
+
   function cardVeredictoHTML(r) {
-    const decisive   = (r.camada_decisiva === 'prata' && r.prata) ? r.prata : r.bronze;
-    const camadaNome = r.camada_decisiva === 'prata' ? 'Prata (CNN EfficientNet_V2S)' : 'Bronze (ensemble)';
-    const cls      = r.label === 'IA' ? 'ia' : 'real';
-    const probIA   = (decisive.prob_ia   * 100).toFixed(1);
-    const probReal = (decisive.prob_real * 100).toFixed(1);
+    const { cls, texto } = VEREDITO_INFO[r.veredito];
+    const probIA   = (r.prata.prob_ia   * 100).toFixed(1);
+    const probReal = (r.prata.prob_real * 100).toFixed(1);
     const conf     = (r.confidence * 100).toFixed(1);
-    const escalateHTML = r.bronze.escalate
-      ? `<div class="exif-note suspeito" style="margin-top:10px">Bronze inconclusivo — veredito final decidido pela camada Prata</div>` : '';
+    const borderColor = { real: '#2e7d32', incerto: '#f57f17', ia: '#c62828' }[cls];
     return `
-      <div class="algo-card" style="border-color:${r.label==='IA'?'#c62828':'#2e7d32'}">
+      <div class="algo-card" style="border-color:${borderColor}">
         <div class="algo-header">
           <span class="algo-name" style="font-size:15px;font-weight:700">Veredicto final</span>
-          <span class="algo-tag ${cls}" style="font-size:13px;padding:5px 16px">${r.label}</span>
+          <span class="algo-tag ${cls}" style="font-size:13px;padding:5px 16px">${texto}</span>
         </div>
         <div class="bar-row">
           <div class="bar-label"><span>Prob. IA</span><span>${probIA}%</span></div>
@@ -329,58 +333,8 @@
           <div class="bar-label"><span>Prob. Real</span><span>${probReal}%</span></div>
           <div class="bar-track"><div class="bar-fill real" style="width:${probReal}%"></div></div>
         </div>
-        <div class="algo-status" style="margin-top:6px">Confiança: <span>${conf}%</span> · Camada decisiva: <span>${camadaNome}</span></div>
-        ${escalateHTML}
+        <div class="algo-status" style="margin-top:6px">Confiança: <span>${conf}%</span></div>
       </div>`;
-  }
-
-  function cardMetadadosHTML(meta) {
-    if (!meta) return '';
-    if (meta.has_ai_indicators) {
-      const lista = meta.indicators.map(i=>`<li style="margin-bottom:4px">${i}</li>`).join('');
-      return `<div class="algo-card" style="border-color:#c62828">
-        <div class="algo-header"><span class="algo-name">Metadados</span><span class="algo-tag ia">IA Detectada</span></div>
-        <div class="exif-note suspeito" style="margin-bottom:8px">Indicadores de IA encontrados</div>
-        <ul style="font-size:11px;color:#ef5350;padding-left:16px;margin:0">${lista}</ul>
-      </div>`;
-    }
-    return `<div class="algo-card">
-      <div class="algo-header"><span class="algo-name">Metadados</span><span class="algo-tag info">Informativo</span></div>
-      <div class="exif-note normal">Nenhum indicador de IA nos metadados</div>
-    </div>`;
-  }
-
-  function cardBaseHTML(nome, r) {
-    if (!r || !r.label) return '';
-    const cls    = r.label === 'IA' ? 'ia' : 'real';
-    const probIA   = (r.prob_ia   * 100).toFixed(1);
-    const probReal = (r.prob_real * 100).toFixed(1);
-    return `<div class="algo-card">
-      <div class="algo-header"><span class="algo-name">${nome}</span><span class="algo-tag ${cls}">${r.label}</span></div>
-      <div class="bar-row">
-        <div class="bar-label"><span>Prob. IA</span><span>${probIA}%</span></div>
-        <div class="bar-track"><div class="bar-fill ia" style="width:${probIA}%"></div></div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-label"><span>Prob. Real</span><span>${probReal}%</span></div>
-        <div class="bar-track"><div class="bar-fill real" style="width:${probReal}%"></div></div>
-      </div>
-    </div>`;
-  }
-
-  function toggleDetalhes() {
-    const sec = document.getElementById('detalhes-section');
-    const btn = document.getElementById('btn-detalhes');
-    const isOpen = sec.classList.contains('show');
-    if (isOpen) {
-      sec.classList.remove('show');
-      btn.classList.remove('open');
-      btn.innerHTML = 'análise completa <span class="arrow">▼</span>';
-    } else {
-      sec.classList.add('show');
-      btn.classList.add('open');
-      btn.innerHTML = 'ocultar detalhes <span class="arrow">▼</span>';
-    }
   }
 
   async function analisarPost() {
@@ -395,25 +349,8 @@
 
       const resp = await fetch('http://127.0.0.1:8000/Xiz9/analise', { method: 'POST', body: formData });
       const r    = await resp.json();
-      const bases = r.bronze.modelos_base || {};
 
-      const detalhesHTML =
-        cardMetadadosHTML(r.bronze.metadata) +
-        (bases.frequencia_cor ? cardBaseHTML('Frequência', bases.frequencia_cor) : '') +
-        cardBaseHTML('Luminescência',   bases.luminescencia || null) +
-        cardBaseHTML('Ruído (DCT+SRM)', bases.ruido         || null) +
-        (r.prata ? cardBaseHTML('EfficientNet_V2S (Prata)', r.prata) : '');
-
-      document.getElementById('popup-body').innerHTML = `
-        ${cardVeredictoHTML(r)}
-        <button class="btn-detalhes" id="btn-detalhes" onclick="toggleDetalhes()">
-          análise completa <span class="arrow">▼</span>
-        </button>
-        <div class="detalhes-section" id="detalhes-section">
-          <div class="detalhes-divider"></div>
-          <div class="detalhes-label">Análise por algoritmo</div>
-          ${detalhesHTML}
-        </div>`;
+      document.getElementById('popup-body').innerHTML = cardVeredictoHTML(r);
     } catch {
       document.getElementById('popup-body').innerHTML =
         '<div style="text-align:center;color:#ef5350;padding:20px">❌ Erro ao conectar com a API.</div>';
@@ -432,25 +369,8 @@
 
       const resp = await fetch('http://127.0.0.1:8000/Xiz9/analise', { method: 'POST', body: formData });
       const r    = await resp.json();
-      const bases = r.bronze.modelos_base || {};
 
-      const detalhesHTML =
-        cardMetadadosHTML(r.bronze.metadata) +
-        (bases.frequencia_cor ? cardBaseHTML('Frequência', bases.frequencia_cor) : '') +
-        cardBaseHTML('Luminescência',   bases.luminescencia || null) +
-        cardBaseHTML('Ruído (DCT+SRM)', bases.ruido         || null) +
-        (r.prata ? cardBaseHTML('EfficientNet_V2S (Prata)', r.prata) : '');
-
-      document.getElementById('popup-body').innerHTML = `
-        ${cardVeredictoHTML(r)}
-        <button class="btn-detalhes" id="btn-detalhes" onclick="toggleDetalhes()">
-          análise completa <span class="arrow">▼</span>
-        </button>
-        <div class="detalhes-section" id="detalhes-section">
-          <div class="detalhes-divider"></div>
-          <div class="detalhes-label">Análise por algoritmo</div>
-          ${detalhesHTML}
-        </div>`;
+      document.getElementById('popup-body').innerHTML = cardVeredictoHTML(r);
     } catch {
       document.getElementById('popup-body').innerHTML =
         '<div style="text-align:center;color:#ef5350;padding:20px">❌ Erro ao conectar com a API.</div>';
