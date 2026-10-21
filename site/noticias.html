@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motor News — Dodge Charger 1969 rouba a cena</title>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1b1b1b; --text: #333; --gray: #6b6b6b; --line: #e3e3e3;
+    --paper: #fafafa; --accent: #b71c1c; --blue: #1565c0; --cloud: #f1f3f6;
+    --green: #2e7d32; --green-light: #e8f5e9; --red: #c62828; --red-light: #ffebee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--text); min-height: 100vh; }
+
+  /* Header */
+  .topline { background: var(--ink); color: rgba(255,255,255,.6); font-size: 11px; padding: 6px 40px; display: flex; justify-content: space-between; }
+  header { background: white; border-bottom: 3px solid var(--accent); padding: 18px 40px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Merriweather', serif; font-size: 28px; font-weight: 900; color: var(--ink); letter-spacing: -.5px; text-decoration: none; }
+  .logo span { color: var(--accent); }
+  nav { display: flex; gap: 24px; }
+  nav a { font-size: 13px; font-weight: 500; color: var(--gray); text-decoration: none; text-transform: uppercase; letter-spacing: .5px; }
+  nav a:hover, nav a.active { color: var(--accent); }
+
+  /* Matéria */
+  article { max-width: 760px; margin: 36px auto 60px; padding: 0 24px; }
+  .editoria { display: inline-block; background: var(--accent); color: white; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border-radius: 3px; margin-bottom: 14px; }
+  h1 { font-family: 'Merriweather', serif; font-size: 34px; font-weight: 900; line-height: 1.25; color: var(--ink); margin-bottom: 14px; }
+  .linha-fina { font-size: 18px; color: var(--gray); line-height: 1.5; margin-bottom: 20px; }
+  .byline { font-size: 12px; color: var(--gray); padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+  .byline strong { color: var(--ink); }
+  .corpo p { font-family: 'Merriweather', serif; font-size: 16px; line-height: 1.85; margin-bottom: 20px; color: var(--text); }
+  .corpo h2 { font-family: 'Merriweather', serif; font-size: 21px; color: var(--ink); margin: 32px 0 14px; }
+
+  figure { margin: 28px 0 32px; }
+  figure img { width: 100%; border-radius: 6px; display: block; max-height: 480px; object-fit: cover; }
+  figcaption { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--gray); line-height: 1.5; }
+  .btn-api { flex-shrink: 0; background: var(--ink); color: white; border: none; border-radius: 6px; padding: 9px 14px; font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; }
+  .btn-api:hover { background: var(--accent); }
+  .btn-api:disabled { opacity: .6; cursor: not-allowed; }
+
+  footer { background: var(--ink); color: rgba(255,255,255,.5); text-align: center; padding: 24px; font-size: 12px; }
+  footer span { color: #ef9a9a; }
+
+  @media (max-width: 640px) {
+    header { padding: 14px 16px; flex-direction: column; gap: 10px; }
+    .topline { padding: 6px 16px; }
+    article { padding: 0 16px; }
+    h1 { font-size: 26px; }
+    figcaption { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* POPUP */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(4px); z-index: 200; align-items: center; justify-content: center; }
+  .overlay.show { display: flex; }
+  .popup { background: white; border-radius: 16px; padding: 32px; width: 500px; max-width: 92vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); animation: popIn .25s ease; }
+  @keyframes popIn { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .popup-title { font-family: 'Merriweather', serif; font-size: 20px; font-weight: 700; color: var(--ink); }
+  .popup-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--gray); }
+  .popup-close:hover { color: var(--ink); }
+
+  .algo-card { border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; }
+  .algo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .algo-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .algo-tag { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; letter-spacing: .5px; }
+  .algo-tag.ia { background: var(--red-light); color: var(--red); }
+  .algo-tag.real { background: var(--green-light); color: var(--green); }
+  .algo-tag.incerto { background: #fff8e1; color: #f57f17; }
+
+  .algo-bars { margin-bottom: 10px; }
+  .bar-row { margin-bottom: 8px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray); margin-bottom: 4px; }
+  .bar-label span:last-child { font-weight: 500; color: var(--text); }
+  .bar-track { height: 6px; background: var(--cloud); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; }
+  .bar-fill.ia { background: var(--red); }
+  .bar-fill.real { background: var(--green); }
+
+  .algo-status { font-size: 11px; color: var(--gray); }
+  .algo-status span { font-weight: 500; color: var(--text); }
+
+  .algo-loading { font-size: 12px; color: var(--gray); display: flex; align-items: center; gap: 8px; }
+  .mini-spinner { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="topline">
+  <span>Terça-feira, 20 de outubro de 2026</span>
+  <span>Edição digital</span>
+</div>
+
+<header>
+  <a class="logo" href="index.html">Motor<span>News</span></a>
+  <nav>
+    <a href="#">Últimas</a>
+    <a href="#" class="active">Automóveis</a>
+    <a href="#">Eventos</a>
+    <a href="#">Clássicos</a>
+    <a href="#">Opinião</a>
+  </nav>
+</header>
+
+<article>
+  <span class="editoria">Automóveis · Clássicos</span>
+  <h1>Dodge Charger 1969 é a grande estrela do Encontro Nacional de Carros Clássicos</h1>
+  <p class="linha-fina">Muscle car americano atraiu filas de visitantes no fim de semana e virou o assunto mais comentado do evento, que reuniu mais de 400 veículos antigos.</p>
+
+  <div class="byline">Por <strong>Ricardo Almeida</strong> · Publicado em 19/10/2026 às 18h32 · Atualizado há 2 horas</div>
+
+  <div class="corpo">
+    <p>O Encontro Nacional de Carros Clássicos, realizado neste fim de semana, teve uma atração que ninguém conseguiu ignorar: um <strong>Dodge Charger 1969</strong> preto, restaurado peça por peça ao longo de quatro anos. O carro ficou exposto no pavilhão principal e, segundo a organização, foi o veículo mais fotografado do evento.</p>
+
+    <figure>
+      <img src="imagens/carro_real.jpg" alt="Dodge Charger 1969 exposto no evento">
+      <figcaption>
+        <span>O Dodge Charger 1969 exposto no pavilhão principal do encontro. Foto: Divulgação</span>
+        <button class="btn-api" onclick="analisarImagem(this, 'imagens/carro_real.jpg')">🔍 Verificar com Xiz9</button>
+      </figcaption>
+    </figure>
+
+    <p>Lançado no fim da década de 1960, o Charger se tornou um dos símbolos da era dos <em>muscle cars</em>, com sua grade frontal com faróis escondidos e o motor V8 de grande cilindrada. O exemplar exposto mantém o motor 440 Magnum original e a pintura foi refeita seguindo o código de cor de fábrica.</p>
+
+    <h2>Restauração de quatro anos</h2>
+
+    <p>O proprietário, colecionador há mais de 20 anos, contou que encontrou o carro abandonado em um galpão no interior e precisou importar diversas peças dos Estados Unidos. “Cada parafuso foi pensado. Ver a reação das pessoas compensa todo o trabalho”, disse.</p>
+
+    <figure>
+      <img src="imagens/carro_ia.png" alt="Dodge Charger 1969 em destaque">
+      <figcaption>
+        <span>Visitantes se aglomeraram ao redor do Charger durante todo o sábado. Foto: Redes sociais</span>
+        <button class="btn-api" onclick="analisarImagem(this, 'imagens/carro_ia.png')">🔍 Verificar com Xiz9</button>
+      </figcaption>
+    </figure>
+
+    <p>Além do Charger, o encontro contou com exemplares de Mustang, Camaro, Opala e Maverick, além de uma área dedicada a motocicletas antigas. A organização estima que cerca de 30 mil pessoas passaram pelo evento ao longo dos dois dias.</p>
+
+    <p>A próxima edição já tem data marcada para o primeiro semestre de 2027, e os organizadores prometem uma ala exclusiva para modelos da Mopar.</p>
+  </div>
+</article>
+
+<footer>
+  © 2026 Motor News — Desenvolvido para o projeto <span>Xiz9</span>
+</footer>
+
+<!-- POPUP -->
+<div class="overlay" id="overlay" onclick="closePopup(event)">
+  <div class="popup" id="popup">
+    <div class="popup-header">
+      <span class="popup-title">🔍 Análise Xiz9</span>
+      <button class="popup-close" onclick="closePopupBtn()">✕</button>
+    </div>
+    <div id="popup-body"></div>
+  </div>
+</div>
+
+<script>
+  function loadingHTML() {
+    return `
+      <div class="algo-card">
+        <div class="algo-loading" style="justify-content:center;padding:12px 0">
+          <span class="mini-spinner"></span> Analisando imagem...
+        </div>
+      </div>`;
+  }
+
+  // Mesmo limiar de service/analise_service.py
+  const INCERTO_THRESHOLD = 0.75;
+
+  const VEREDITO_INFO = {
+    REAL:    { cls: 'real',    texto: 'Muito provável que seja real' },
+    INCERTO: { cls: 'incerto', texto: 'Incerto' },
+    IA:      { cls: 'ia',      texto: 'Muito provável que foi gerado por IA' },
+  };
+
+  function cardVeredictoHTML(r) {
+    const veredito = r.confidence < INCERTO_THRESHOLD ? 'INCERTO' : r.label;
+    const { cls, texto } = VEREDITO_INFO[veredito];
+    const probIAVal = r.label === 'IA' ? r.confidence : 1 - r.confidence;
+    const probIA   = (probIAVal       * 100).toFixed(1);
+    const probReal = ((1 - probIAVal) * 100).toFixed(1);
+    const conf     = (r.confidence * 100).toFixed(1);
+    const borderColor = { real: 'var(--green)', incerto: '#f57f17', ia: 'var(--red)' }[cls];
+    return `
+      <div class="algo-card" style="border-color:${borderColor}">
+        <div class="algo-header">
+          <span class="algo-name" style="font-size:14px;font-weight:600">Veredicto final</span>
+          <span class="algo-tag ${cls}" style="font-size:12px;padding:4px 14px">${texto}</span>
+        </div>
+        <div class="algo-bars">
+          <div class="bar-row">
+            <div class="bar-label"><span>Prob. IA</span><span>${probIA}%</span></div>
+            <div class="bar-track"><div class="bar-fill ia" style="width:${probIA}%"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>Prob. Real</span><span>${probReal}%</span></div>
+            <div class="bar-track"><div class="bar-fill real" style="width:${probReal}%"></div></div>
+          </div>
+        </div>
+        <div class="algo-status">Confiança: <span>${conf}%</span></div>
+      </div>`;
+  }
+
+  async function analisarImagem(btn, src) {
+    btn.disabled = true;
+
+    document.getElementById('popup-body').innerHTML = loadingHTML();
+    document.getElementById('overlay').classList.add('show');
+
+    try {
+      const blob = await (await fetch(src)).blob();
+      const formData = new FormData();
+      formData.append('file', blob, src.split('/').pop());
+      const resp = await fetch('http://127.0.0.1:8000/Xiz9/analise', { method: 'POST', body: formData });
+      const r    = await resp.json();
+
+      document.getElementById('popup-body').innerHTML = cardVeredictoHTML(r);
+    } catch {
+      document.getElementById('popup-body').innerHTML =
+        '<div style="text-align:center;color:var(--red);padding:20px">❌ Erro ao conectar com a API.</div>';
+    }
+
+    btn.disabled = false;
+  }
+
+  function closePopup(e) {
+    if (e.target === document.getElementById('overlay')) closePopupBtn();
+  }
+  function closePopupBtn() {
+    document.getElementById('overlay').classList.remove('show');
+  }
+</script>
+
+</body>
+</html>

@@ -15,7 +15,7 @@
   body { font-family: 'DM Sans', sans-serif; background: var(--soft); color: var(--text); min-height: 100vh; }
 
   header { background: white; border-bottom: 1px solid var(--mist); padding: 12px 40px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(26,39,68,.06); }
-  .logo { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--night); letter-spacing: 1px; }
+  .logo { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--night); letter-spacing: 1px; text-decoration: none; }
   .logo span { color: var(--dusk); }
   nav { display: flex; gap: 28px; }
   nav a { font-size: 13px; color: var(--gray); text-decoration: none; }
@@ -184,7 +184,7 @@
 <body>
 
 <header>
-  <div class="logo">Nuvem<span>Soft</span></div>
+  <a class="logo" href="index.html">Nuvem<span>Soft</span></a>
   <nav>
     <a href="#">Início</a>
     <a href="#">Coleções</a>
@@ -202,7 +202,7 @@
   <div class="gallery">
     <div class="main-image">
       <span class="badge">✦ Best Seller</span>
-      <img src="Coberta_nuvem.png" alt="NuvemSoft Cobertor de Nuvem">
+      <img src="imagens/Coberta_nuvem.png" alt="NuvemSoft Cobertor de Nuvem">
     </div>
   </div>
 
@@ -333,6 +333,9 @@
       </div>`;
   }
 
+  // Mesmo limiar de service/analise_service.py
+  const INCERTO_THRESHOLD = 0.75;
+
   const VEREDITO_INFO = {
     REAL:    { cls: 'real',    texto: 'Muito provável que seja real' },
     INCERTO: { cls: 'incerto', texto: 'Incerto' },
@@ -340,9 +343,11 @@
   };
 
   function cardVeredictoHTML(r) {
-    const { cls, texto } = VEREDITO_INFO[r.veredito];
-    const probIA   = (r.prata.prob_ia   * 100).toFixed(1);
-    const probReal = (r.prata.prob_real * 100).toFixed(1);
+    const veredito = r.confidence < INCERTO_THRESHOLD ? 'INCERTO' : r.label;
+    const { cls, texto } = VEREDITO_INFO[veredito];
+    const probIAVal = r.label === 'IA' ? r.confidence : 1 - r.confidence;
+    const probIA   = (probIAVal       * 100).toFixed(1);
+    const probReal = ((1 - probIAVal) * 100).toFixed(1);
     const conf     = (r.confidence * 100).toFixed(1);
     const borderColor = { real: 'var(--green)', incerto: '#f57f17', ia: 'var(--red)' }[cls];
     return `
@@ -374,7 +379,7 @@
 
     let blob;
     try {
-      blob = activeImageBlob ?? await (await fetch('Coberta_nuvem.png')).blob();
+      blob = activeImageBlob ?? await (await fetch('imagens/Coberta_nuvem.png')).blob();
     } catch {
       document.getElementById('popup-body').innerHTML =
         '<div style="text-align:center;color:var(--red);padding:20px">❌ Não foi possível carregar a imagem.</div>';

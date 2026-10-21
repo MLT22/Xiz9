@@ -17,7 +17,6 @@ class AnaliseService:
 
         return {
             "label": prata["label"],
-            "confidence": prata["confidence"],
-            "veredito": veredito,
-            "prata": prata,
+            "confidence": prata["confidence"]
+            
         }

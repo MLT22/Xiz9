@@ -167,10 +167,10 @@
   <div class="post">
     <div class="post-header">
       <div class="post-user">
-        <div class="avatar">🏛️</div>
+        <div class="avatar">🐶</div>
         <div class="user-info">
-          <span class="display-name">Prefeitura Municipal</span>
-          <span class="username">@pref_municipal</span>
+          <span class="display-name">Lar Feliz Pet 🐾</span>
+          <span class="username">@larfelizpet_adocao</span>
         </div>
       </div>
       <div class="post-actions">
@@ -188,23 +188,25 @@
     </div>
 
     <p class="post-text">
-      Nossa rua do bairro São João Del Rey decorada e pintada para a Copa! 🇧🇷🏆 Orgulho da nossa cidade!
-      <span style="color:var(--blue)">#Hexa #Brasil #Copa2026</span>
+      🐕 ADOÇÃO RESPONSÁVEL! Esses 4 filhotinhos lindos estão procurando um lar cheio de amor ❤️
+      Vacinados e vermifugados. Para garantir o seu, basta pagar a taxa de reserva de R$ 150 via PIX e chamar na DM!
+      Restam poucos, corre!! 🏃‍♀️
+      <span style="color:var(--blue)">#AdoteNaoCompre #Filhotes #AdoteUmAmigo</span>
     </p>
 
-    <img class="post-img" src="rua_fake.jpg" alt="Rua pintada" id="post-img">
+    <img class="post-img" src="imagens/cachorro_IA.png" alt="Filhotes para adoção" id="post-img">
 
-    <div class="post-time">17:06 · 11 jun. 2026</div>
+    <div class="post-time">10:42 · 14 out. 2026</div>
 
     <div class="post-stats">
-      <span class="stat"><strong>54,4K</strong> Curtidas</span>
-      <span class="stat"><strong>201</strong> Comentários</span>
+      <span class="stat"><strong>12,8K</strong> Curtidas</span>
+      <span class="stat"><strong>347</strong> Comentários</span>
     </div>
 
     <div class="post-btns">
-      <button class="post-btn">💬 201</button>
-      <button class="post-btn">🔁 1.521</button>
-      <button class="post-btn">❤️ 54,4K</button>
+      <button class="post-btn">💬 347</button>
+      <button class="post-btn">🔁 2.904</button>
+      <button class="post-btn">❤️ 12,8K</button>
       <button class="post-btn">📤</button>
     </div>
   </div>
@@ -212,15 +214,15 @@
   <!-- Comentários -->
   <div class="comments-label">Respostas mais relevantes</div>
 
-  <!-- Comentário 1 — quem foi lá -->
+  <!-- Comentário 1 — denúncia do golpe -->
   <div class="comment">
     <div class="avatar" style="font-size:16px">👤</div>
     <div class="comment-body">
       <div class="comment-header" style="justify-content:space-between">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span class="comment-name">João Pedro</span>
-          <span class="comment-user">@jpzinhoo</span>
-          <span class="comment-time">· 11 jun.</span>
+          <span class="comment-name">Mariana Costa</span>
+          <span class="comment-user">@mari_costa</span>
+          <span class="comment-time">· 14 out.</span>
         </div>
         <div style="position:relative">
           <button class="btn-dots" id="dots-comment" onclick="toggleDots('menu-comment', 'dots-comment')">···</button>
@@ -233,13 +235,13 @@
         </div>
       </div>
       <p class="comment-text">
-        mano fui lá agora e não tem NADA pintado no chão 💀 só tem as fitinhas. a prefeitura postou uma imagem gerada por IA kkkkkkkkk
+        ⚠️ GOLPE! NÃO PAGUEM NADA! Essa é a foto do MEU cachorro que postei ano passado, eles usaram IA pra gerar essa imagem dos "filhotes" em cima dela. Esses filhotes não existem, já denunciei o perfil. Compartilhem pra ninguém cair! 🚫
       </p>
-      <img class="comment-img" src="rua_real.jpg" alt="Rua real">
+      <img class="comment-img" src="imagens/cachorro_real.jpg" alt="Foto original do cachorro" id="comment-img">
       <div class="comment-btns">
-        <button class="comment-btn">💬 48</button>
-        <button class="comment-btn">🔁 312</button>
-        <button class="comment-btn">❤️ 5.500</button>
+        <button class="comment-btn">💬 86</button>
+        <button class="comment-btn">🔁 1.240</button>
+        <button class="comment-btn">❤️ 9.731</button>
       </div>
     </div>
   </div>
@@ -307,6 +309,9 @@
     return `<div class="algo-card"><div class="algo-loading"><span class="mini-spinner"></span> Analisando imagem...</div></div>`;
   }
 
+  // Mesmo limiar de service/analise_service.py
+  const INCERTO_THRESHOLD = 0.75;
+
   const VEREDITO_INFO = {
     REAL:    { cls: 'real',    texto: 'Muito provável que seja real' },
     INCERTO: { cls: 'incerto', texto: 'Incerto' },
@@ -314,9 +319,11 @@
   };
 
   function cardVeredictoHTML(r) {
-    const { cls, texto } = VEREDITO_INFO[r.veredito];
-    const probIA   = (r.prata.prob_ia   * 100).toFixed(1);
-    const probReal = (r.prata.prob_real * 100).toFixed(1);
+    const veredito = r.confidence < INCERTO_THRESHOLD ? 'INCERTO' : r.label;
+    const { cls, texto } = VEREDITO_INFO[veredito];
+    const probIAVal = r.label === 'IA' ? r.confidence : 1 - r.confidence;
+    const probIA   = (probIAVal       * 100).toFixed(1);
+    const probReal = ((1 - probIAVal) * 100).toFixed(1);
     const conf     = (r.confidence * 100).toFixed(1);
     const borderColor = { real: '#2e7d32', incerto: '#f57f17', ia: '#c62828' }[cls];
     return `
@@ -343,9 +350,9 @@
     document.getElementById('overlay').classList.add('show');
 
     try {
-      const blob = postBlob ?? await (await fetch('rua_fake.jpg')).blob();
+      const blob = postBlob ?? await (await fetch('imagens/cachorro_IA.png')).blob();
       const formData = new FormData();
-      formData.append('file', blob, 'rua_fake.jpg');
+      formData.append('file', blob, 'cachorro_IA.png');
 
       const resp = await fetch('http://127.0.0.1:8000/Xiz9/analise', { method: 'POST', body: formData });
       const r    = await resp.json();
@@ -363,9 +370,9 @@
     document.getElementById('overlay').classList.add('show');
 
     try {
-      const blob = commentBlob ?? await (await fetch('rua_real.jpg')).blob();
+      const blob = commentBlob ?? await (await fetch('imagens/cachorro_real.jpg')).blob();
       const formData = new FormData();
-      formData.append('file', blob, 'rua_real.jpg');
+      formData.append('file', blob, 'cachorro_real.jpg');
 
       const resp = await fetch('http://127.0.0.1:8000/Xiz9/analise', { method: 'POST', body: formData });
       const r    = await resp.json();
