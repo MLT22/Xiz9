@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from controller.bronze_controller import bronze_router
 from controller.prata_controller import prata_router
 from controller.analise_controller import analise_router
+from controller.drive_controller import drive_router
 
 app = FastAPI(title="Image Metadata API")
 
@@ -16,3 +17,4 @@ app.add_middleware(
 app.include_router(bronze_router)
 app.include_router(prata_router)
 app.include_router(analise_router)
+app.include_router(drive_router)

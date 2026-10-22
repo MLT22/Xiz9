@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teste Interativo — Xiz9</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #1a2744; --dusk: #8ba4d4; --mist: #dce6f8;
+    --soft: #f7f9ff; --gray: #8a96ad; --text: #2c3a5a;
+    --ig-bg: #000000; --ig-border: #2f3336; --ig-text: #e7e9ea; --ig-sub: #a8a8a8;
+    --azul-pastel: #cfe0f5; --azul-pastel-hover: #b9d3f0; --azul-texto: #1a3a5c;
+    --amarelo-pastel: #fdeeba; --amarelo-pastel-hover: #fbe59a; --amarelo-texto: #6b5415;
+    --green: #2e7d32; --green-light: #e8f5e9;
+    --red: #c62828; --red-light: #ffebee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--soft);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Topo */
+  .topbar { padding: 20px 32px; }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--gray); text-decoration: none; font-size: 14px;
+    padding: 8px 12px; border-radius: 8px; transition: background .2s, color .2s;
+  }
+  .back-link:hover { background: white; color: var(--night); }
+
+  /* Layout principal */
+  .palco {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 10px 32px 60px;
+    display: grid;
+    grid-template-columns: 460px 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+
+  /* ── Post estilo Instagram ───────────────────────────────── */
+  .post {
+    background: var(--ig-bg);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 16px 48px rgba(26,39,68,.14);
+  }
+  .post-header {
+    display: flex; align-items: center; gap: 11px;
+    padding: 13px 14px;
+  }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #1d9bf0;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 18px; font-weight: 700;
+    flex-shrink: 0; letter-spacing: -.5px;
+  }
+  .user-nome {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 14px; font-weight: 600; color: var(--ig-text);
+  }
+  .selo {
+    width: 15px; height: 15px; border-radius: 50%;
+    background: #1d9bf0; color: white;
+    font-size: 9px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  .post-midia {
+    width: 100%; aspect-ratio: 1/1;
+    background: white;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .post-midia img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .post-midia.foto { background: #000; }
+  .post-midia.foto img { object-fit: cover; }
+
+  .post-acoes {
+    display: flex; align-items: center; gap: 18px;
+    padding: 12px 14px 8px;
+    font-size: 21px; color: var(--ig-text);
+  }
+  .post-acoes span { cursor: default; }
+  .post-curtidas {
+    padding: 0 14px 6px;
+    font-size: 14px; font-weight: 600; color: var(--ig-text);
+  }
+  .post-legenda {
+    padding: 0 14px 14px;
+    font-size: 14px; line-height: 1.5; color: var(--ig-text);
+  }
+  .post-legenda b { font-weight: 600; margin-right: 5px; }
+  .post-legenda .hash { color: #4a9eff; }
+  .post-divisor { height: 1px; background: var(--ig-border); }
+  .post-rodape { height: 18px; background: var(--ig-bg); }
+
+  /* ── Botões ──────────────────────────────────────────────── */
+  .acoes {
+    display: flex; flex-direction: column; gap: 22px;
+  }
+  .btn {
+    border: none; border-radius: 14px;
+    padding: 20px 26px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px; font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 3px 12px rgba(26,39,68,.07);
+  }
+  .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(26,39,68,.12); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-verificar { background: var(--azul-pastel); color: var(--azul-texto); }
+  .btn-verificar:hover:not(:disabled) { background: var(--azul-pastel-hover); }
+  .btn-adicionar { background: var(--amarelo-pastel); color: var(--amarelo-texto); }
+  .btn-adicionar:hover:not(:disabled) { background: var(--amarelo-pastel-hover); }
+
+  .dica {
+    font-size: 12.5px; color: var(--gray); line-height: 1.6;
+    padding-left: 4px;
+  }
+
+  /* ── Modal da galeria ────────────────────────────────────── */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(26,39,68,.5); backdrop-filter: blur(4px);
+    z-index: 200; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: white; border-radius: 18px;
+    width: 780px; max-width: 100%; max-height: 82vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 24px 60px rgba(26,39,68,.22);
+    animation: popIn .22s ease;
+  }
+  @keyframes popIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px; border-bottom: 1px solid var(--mist);
+  }
+  .modal-titulo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 21px; font-weight: 600; color: var(--night);
+  }
+  .modal-header-acoes { display: flex; align-items: center; gap: 8px; }
+  .btn-atualizar {
+    background: var(--mist); color: var(--night); border: none;
+    border-radius: 8px; padding: 8px 14px;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-atualizar:hover { background: var(--dusk); color: white; }
+  .modal-fechar {
+    background: none; border: none; font-size: 20px;
+    color: var(--gray); cursor: pointer; padding: 4px 8px;
+  }
+  .modal-fechar:hover { color: var(--night); }
+
+  .galeria {
+    padding: 22px 24px; overflow-y: auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 18px;
+  }
+  .item {
+    cursor: pointer; border-radius: 10px; padding: 8px;
+    transition: background .15s;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .item:hover { background: var(--soft); }
+  .item-thumb {
+    width: 100%; aspect-ratio: 1/1;
+    border-radius: 8px; border: 1.5px solid var(--mist);
+    object-fit: cover; background: var(--soft); display: block;
+  }
+  .item:hover .item-thumb { border-color: var(--dusk); }
+  .item-nome {
+    font-size: 11.5px; color: var(--gray);
+    text-align: center; line-height: 1.4;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .galeria-vazia, .galeria-erro {
+    grid-column: 1/-1; text-align: center;
+    padding: 50px 20px; font-size: 14px; color: var(--gray); line-height: 1.7;
+  }
+  .galeria-erro { color: var(--red); }
+
+  /* ── Popup do veredicto ──────────────────────────────────── */
+  .popup {
+    background: white; border-radius: 18px; padding: 30px;
+    width: 460px; max-width: 100%;
+    box-shadow: 0 24px 60px rgba(26,39,68,.22);
+    animation: popIn .22s ease;
+  }
+  .popup-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+  }
+  .popup-titulo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 600; color: var(--night);
+  }
+  .card-resultado {
+    border: 1.5px solid var(--mist); border-radius: 12px; padding: 18px;
+  }
+  .card-head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; margin-bottom: 15px;
+  }
+  .card-nome { font-size: 14px; font-weight: 600; color: var(--night); }
+  .tag {
+    font-size: 12px; font-weight: 600;
+    padding: 5px 13px; border-radius: 20px; text-align: right;
+  }
+  .tag.real { background: var(--green-light); color: var(--green); }
+  .tag.ia { background: var(--red-light); color: var(--red); }
+  .tag.incerto { background: #fff8e1; color: #f57f17; }
+  .bar-row { margin-bottom: 9px; }
+  .bar-label {
+    display: flex; justify-content: space-between;
+    font-size: 11.5px; color: var(--gray); margin-bottom: 4px;
+  }
+  .bar-label span:last-child { font-weight: 600; color: var(--text); }
+  .bar-track { height: 6px; background: var(--soft); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; }
+  .bar-fill.ia { background: var(--red); }
+  .bar-fill.real { background: var(--green); }
+  .card-conf { font-size: 11.5px; color: var(--gray); margin-top: 10px; }
+  .card-conf span { font-weight: 600; color: var(--text); }
+
+  .carregando {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 28px; font-size: 13px; color: var(--gray);
+  }
+  .spinner {
+    width: 15px; height: 15px;
+    border: 2px solid var(--mist); border-top-color: var(--dusk);
+    border-radius: 50%; animation: girar .8s linear infinite;
+  }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .msg-erro { text-align: center; color: var(--red); padding: 24px; font-size: 14px; line-height: 1.6; }
+
+  @media (max-width: 900px) {
+    .palco { grid-template-columns: 1fr; gap: 32px; max-width: 460px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back-link" href="index.html">← Voltar</a>
+</div>
+
+<div class="palco">
+
+  <!-- Post -->
+  <div class="post">
+    <div class="post-header">
+      <div class="avatar">X</div>
+      <div class="user-nome">
+        Xiz9 <span class="selo">✓</span>
+      </div>
+    </div>
+
+    <div class="post-midia" id="post-midia">
+      <img src="imagens/qrcode.png" alt="QR code do formulário" id="post-img">
+    </div>
+
+    <div class="post-acoes">
+      <span>♡</span>
+      <span>💬</span>
+      <span>↗</span>
+    </div>
+    <div class="post-curtidas">2.431 curtidas</div>
+    <div class="post-legenda">
+      <b>xiz9</b>Aponte a câmera do celular para o QR code e envie sua imagem para análise.
+      <span class="hash">#DetecçãoDeIA #Xiz9</span>
+    </div>
+
+    <div class="post-divisor"></div>
+    <div class="post-rodape"></div>
+  </div>
+
+  <!-- Botões -->
+  <div class="acoes">
+    <button class="btn btn-verificar" id="btn-verificar" onclick="verificar()">
+      Verificar com o Xiz9
+    </button>
+    <button class="btn btn-adicionar" onclick="abrirGaleria()">
+      Adicionar Imagem
+    </button>
+    <p class="dica" id="dica">
+      Nenhuma imagem selecionada ainda. Envie uma pelo QR code e use
+      <strong>Adicionar Imagem</strong> para escolhê-la.
+    </p>
+  </div>
+
+</div>
+
+<!-- Modal da galeria -->
+<div class="overlay" id="overlay-galeria" onclick="fecharGaleria(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-titulo">Imagens recebidas</span>
+      <div class="modal-header-acoes">
+        <button class="btn-atualizar" onclick="carregarGaleria()">↻ Atualizar</button>
+        <button class="modal-fechar" onclick="fecharGaleriaBtn()">✕</button>
+      </div>
+    </div>
+    <div class="galeria" id="galeria"></div>
+  </div>
+</div>
+
+<!-- Popup do veredicto -->
+<div class="overlay" id="overlay-resultado" onclick="fecharResultado(event)">
+  <div class="popup" onclick="event.stopPropagation()">
+    <div class="popup-header">
+      <span class="popup-titulo">Análise Xiz9</span>
+      <button class="modal-fechar" onclick="fecharResultadoBtn()">✕</button>
+    </div>
+    <div id="corpo-resultado"></div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://127.0.0.1:8000';
+  const INCERTO_THRESHOLD = 0.75;
+
+  const VEREDITO_INFO = {
+    REAL:    { cls: 'real',    texto: 'Muito provável que seja real' },
+    INCERTO: { cls: 'incerto', texto: 'Incerto' },
+    IA:      { cls: 'ia',      texto: 'Muito provável que foi gerado por IA' },
+  };
+
+  let imagemSelecionada = null;   // { id, nome }
+
+  // ── Galeria ────────────────────────────────────────────────
+  function abrirGaleria() {
+    document.getElementById('overlay-galeria').classList.add('show');
+    carregarGaleria();
+  }
+
+  async function carregarGaleria() {
+    const galeria = document.getElementById('galeria');
+    galeria.innerHTML = '<div class="galeria-vazia"><span class="spinner"></span><br>Carregando imagens...</div>';
+
+    try {
+      const resp = await fetch(`${API}/drive/imagens`);
+      const dados = await resp.json();
+      const imagens = dados.imagens || [];
+
+      if (imagens.length === 0) {
+        galeria.innerHTML = `<div class="galeria-vazia">
+          Nenhuma imagem na pasta ainda.<br>
+          Envie uma pelo formulário e clique em <strong>Atualizar</strong>.
+        </div>`;
+        return;
+      }
+
+      galeria.innerHTML = '';
+      imagens.forEach(img => {
+        const item = document.createElement('div');
+        item.className = 'item';
+
+        const thumb = document.createElement('img');
+        thumb.className = 'item-thumb';
+        thumb.src = `${API}/drive/imagem/${img.id}`;
+        thumb.alt = img.nome;
+        thumb.loading = 'lazy';
+
+        const nome = document.createElement('div');
+        nome.className = 'item-nome';
+        nome.title = img.nome;
+        nome.textContent = img.nome;
+
+        item.appendChild(thumb);
+        item.appendChild(nome);
+        item.addEventListener('click', () => selecionarImagem(img.id, img.nome));
+
+        galeria.appendChild(item);
+      });
+
+    } catch {
+      galeria.innerHTML = `<div class="galeria-erro">
+        Não foi possível carregar as imagens.<br>
+        Verifique se a API está rodando em ${API}.
+      </div>`;
+    }
+  }
+
+  function selecionarImagem(id, nome) {
+    imagemSelecionada = { id, nome };
+
+    const midia = document.getElementById('post-midia');
+    const img = document.getElementById('post-img');
+    img.src = `${API}/drive/imagem/${id}`;
+    img.alt = nome;
+    midia.classList.add('foto');
+
+    const dica = document.getElementById('dica');
+    dica.textContent = 'Imagem selecionada: ';
+    const forte = document.createElement('strong');
+    forte.textContent = nome;
+    dica.appendChild(forte);
+
+    fecharGaleriaBtn();
+  }
+
+  function fecharGaleria(e) {
+    if (e.target === document.getElementById('overlay-galeria')) fecharGaleriaBtn();
+  }
+  function fecharGaleriaBtn() {
+    document.getElementById('overlay-galeria').classList.remove('show');
+  }
+
+  // ── Verificação ────────────────────────────────────────────
+  function cardResultadoHTML(r) {
+    const veredito = r.confidence < INCERTO_THRESHOLD ? 'INCERTO' : r.label;
+    const { cls, texto } = VEREDITO_INFO[veredito];
+    const probIAVal = r.label === 'IA' ? r.confidence : 1 - r.confidence;
+    const probIA   = (probIAVal       * 100).toFixed(1);
+    const probReal = ((1 - probIAVal) * 100).toFixed(1);
+    const conf     = (r.confidence * 100).toFixed(1);
+    const borda = { real: 'var(--green)', incerto: '#f57f17', ia: 'var(--red)' }[cls];
+
+    return `
+      <div class="card-resultado" style="border-color:${borda}">
+        <div class="card-head">
+          <span class="card-nome">Veredicto final</span>
+          <span class="tag ${cls}">${texto}</span>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label"><span>Prob. IA</span><span>${probIA}%</span></div>
+          <div class="bar-track"><div class="bar-fill ia" style="width:${probIA}%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label"><span>Prob. Real</span><span>${probReal}%</span></div>
+          <div class="bar-track"><div class="bar-fill real" style="width:${probReal}%"></div></div>
+        </div>
+        <div class="card-conf">Confiança: <span>${conf}%</span></div>
+      </div>`;
+  }
+
+  async function verificar() {
+    const corpo = document.getElementById('corpo-resultado');
+    const btn = document.getElementById('btn-verificar');
+
+    if (!imagemSelecionada) {
+      document.getElementById('overlay-resultado').classList.add('show');
+      corpo.innerHTML = `<div class="msg-erro">
+        Nenhuma imagem selecionada.<br>
+        Use <strong>Adicionar Imagem</strong> para escolher uma das imagens enviadas.
+      </div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    corpo.innerHTML = '<div class="carregando"><span class="spinner"></span> Analisando imagem...</div>';
+    document.getElementById('overlay-resultado').classList.add('show');
+
+    try {
+      const blob = await (await fetch(`${API}/drive/imagem/${imagemSelecionada.id}`)).blob();
+      const formData = new FormData();
+      formData.append('file', blob, imagemSelecionada.nome);
+
+      const resp = await fetch(`${API}/Xiz9/analise`, { method: 'POST', body: formData });
+      const r = await resp.json();
+
+      corpo.innerHTML = cardResultadoHTML(r);
+    } catch {
+      corpo.innerHTML = '<div class="msg-erro">Erro ao conectar com a API.</div>';
+    }
+
+    btn.disabled = false;
+  }
+
+  function fecharResultado(e) {
+    if (e.target === document.getElementById('overlay-resultado')) fecharResultadoBtn();
+  }
+  function fecharResultadoBtn() {
+    document.getElementById('overlay-resultado').classList.remove('show');
+  }
+</script>
+
+</body>
+</html>

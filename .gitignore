@@ -5,3 +5,4 @@ __pycache__
 venv/
 cache*
 modelos_treinamento
+config_local.py
