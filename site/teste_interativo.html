@@ -488,6 +488,16 @@
     document.getElementById('overlay-resultado').classList.remove('show');
   }
 </script>
-
+<script>
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const popupAberto = document.querySelector('.overlay.show');
+    if (popupAberto) {
+      popupAberto.classList.remove('show');
+      return;
+    }
+    window.location.href = 'index.html';
+  });
+</script> 
 </body>
 </html>
