@@ -12,6 +12,7 @@
     --ig-bg: #000000; --ig-border: #2f3336; --ig-text: #e7e9ea; --ig-sub: #a8a8a8;
     --azul-pastel: #cfe0f5; --azul-pastel-hover: #b9d3f0; --azul-texto: #1a3a5c;
     --amarelo-pastel: #fdeeba; --amarelo-pastel-hover: #fbe59a; --amarelo-texto: #6b5415;
+    --verde-pastel: #cfeedd; --verde-pastel-hover: #b8e4cc; --verde-texto: #1d5138;
     --green: #2e7d32; --green-light: #e8f5e9;
     --red: #c62828; --red-light: #ffebee;
   }
@@ -120,6 +121,35 @@
   .btn-verificar:hover:not(:disabled) { background: var(--azul-pastel-hover); }
   .btn-adicionar { background: var(--amarelo-pastel); color: var(--amarelo-texto); }
   .btn-adicionar:hover:not(:disabled) { background: var(--amarelo-pastel-hover); }
+  .btn-camera { background: var(--verde-pastel); color: var(--verde-texto); }
+  .btn-camera:hover:not(:disabled) { background: var(--verde-pastel-hover); }
+
+  /* ── Modal da câmera ─────────────────────────────────────── */
+  .camera-corpo { padding: 22px 24px; }
+  .camera-seletor {
+    width: 100%; padding: 10px 12px; margin-bottom: 16px;
+    border: 1.5px solid var(--mist); border-radius: 9px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    color: var(--text); background: white; cursor: pointer;
+  }
+  .camera-preview {
+    width: 100%; aspect-ratio: 4/3; background: #000;
+    border-radius: 11px; overflow: hidden; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .camera-preview video { width: 100%; height: 100%; object-fit: cover; }
+  .camera-preview .aviso {
+    color: var(--gray); font-size: 13px; text-align: center;
+    padding: 20px; line-height: 1.7;
+  }
+  .btn-capturar {
+    width: 100%; background: var(--night); color: white; border: none;
+    border-radius: 11px; padding: 15px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-capturar:hover:not(:disabled) { background: #253564; }
+  .btn-capturar:disabled { opacity: .5; cursor: not-allowed; }
 
   .dica {
     font-size: 12.5px; color: var(--gray); line-height: 1.6;
@@ -293,12 +323,15 @@
     <button class="btn btn-verificar" id="btn-verificar" onclick="verificar()">
       Verificar com o Xiz9
     </button>
+    <button class="btn btn-camera" onclick="abrirCamera()">
+      Tirar Foto
+    </button>
     <button class="btn btn-adicionar" onclick="abrirGaleria()">
       Adicionar Imagem
     </button>
     <p class="dica" id="dica">
       Nenhuma imagem selecionada ainda. Envie uma pelo QR code e use
-      <strong>Adicionar Imagem</strong> para escolhê-la.
+      <strong>Adicionar Imagem</strong>, ou tire uma foto na hora.
     </p>
   </div>
 
@@ -315,6 +348,25 @@
       </div>
     </div>
     <div class="galeria" id="galeria"></div>
+  </div>
+</div>
+
+<!-- Modal da câmera -->
+<div class="overlay" id="overlay-camera" onclick="fecharCamera(event)">
+  <div class="modal" style="width:620px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-titulo">Tirar foto</span>
+      <div class="modal-header-acoes">
+        <button class="modal-fechar" onclick="fecharCameraBtn()">✕</button>
+      </div>
+    </div>
+    <div class="camera-corpo">
+      <select class="camera-seletor" id="seletor-camera" onchange="iniciarStream(this.value)"></select>
+      <div class="camera-preview" id="camera-preview">
+        <video id="video" autoplay playsinline muted></video>
+      </div>
+      <button class="btn-capturar" id="btn-capturar" onclick="capturar()">Capturar</button>
+    </div>
   </div>
 </div>
 
@@ -339,7 +391,8 @@
     IA:      { cls: 'ia',      texto: 'Muito provável que foi gerado por IA' },
   };
 
-  let imagemSelecionada = null;   // { id, nome }
+  // { id, nome } vindo do Drive  ou  { blob, nome } vindo da câmera
+  let imagemSelecionada = null;
 
   // ── Galeria ────────────────────────────────────────────────
   function abrirGaleria() {
@@ -397,10 +450,14 @@
 
   function selecionarImagem(id, nome) {
     imagemSelecionada = { id, nome };
+    mostrarNoPost(`${API}/drive/imagem/${id}`, nome);
+    fecharGaleriaBtn();
+  }
 
+  function mostrarNoPost(src, nome) {
     const midia = document.getElementById('post-midia');
     const img = document.getElementById('post-img');
-    img.src = `${API}/drive/imagem/${id}`;
+    img.src = src;
     img.alt = nome;
     midia.classList.add('foto');
 
@@ -409,8 +466,6 @@
     const forte = document.createElement('strong');
     forte.textContent = nome;
     dica.appendChild(forte);
-
-    fecharGaleriaBtn();
   }
 
   function fecharGaleria(e) {
@@ -418,6 +473,119 @@
   }
   function fecharGaleriaBtn() {
     document.getElementById('overlay-galeria').classList.remove('show');
+  }
+
+  // ── Câmera ─────────────────────────────────────────────────
+  let stream = null;
+
+  async function abrirCamera() {
+    document.getElementById('overlay-camera').classList.add('show');
+    const preview = document.getElementById('camera-preview');
+    const seletor = document.getElementById('seletor-camera');
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      preview.innerHTML = `<div class="aviso">
+        A câmera não está disponível nesta página.<br>
+        Abra o site por <strong>http://localhost</strong>, não pelo arquivo direto.
+      </div>`;
+      document.getElementById('btn-capturar').disabled = true;
+      return;
+    }
+
+    try {
+      // pedir permissão primeiro — sem isso os nomes das câmeras vêm vazios
+      const temp = await navigator.mediaDevices.getUserMedia({ video: true });
+      temp.getTracks().forEach(t => t.stop());
+
+      const dispositivos = await navigator.mediaDevices.enumerateDevices();
+      const cameras = dispositivos.filter(d => d.kind === 'videoinput');
+
+      seletor.innerHTML = '';
+      cameras.forEach((cam, i) => {
+        const opt = document.createElement('option');
+        opt.value = cam.deviceId;
+        opt.textContent = cam.label || `Câmera ${i + 1}`;
+        seletor.appendChild(opt);
+      });
+
+      // a webcam USB costuma ser a última da lista
+      if (cameras.length > 1) seletor.selectedIndex = cameras.length - 1;
+
+      iniciarStream(seletor.value);
+    } catch {
+      preview.innerHTML = `<div class="aviso">
+        Não foi possível acessar a câmera.<br>
+        Verifique se você permitiu o acesso no navegador.
+      </div>`;
+      document.getElementById('btn-capturar').disabled = true;
+    }
+  }
+
+  async function iniciarStream(deviceId) {
+    pararStream();
+    await new Promise(r => setTimeout(r, 200));   // dá tempo do device liberar
+
+    const preview = document.getElementById('camera-preview');
+    preview.innerHTML = '<video id="video" autoplay playsinline muted></video>';
+    const video = document.getElementById('video');
+
+    // tenta do mais específico para o mais genérico
+    const tentativas = [
+      { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { video: { deviceId: { exact: deviceId } } },
+      { video: { deviceId: deviceId } },
+      { video: true },
+    ];
+
+    let ultimoErro = null;
+    for (const constraints of tentativas) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        document.getElementById('btn-capturar').disabled = false;
+        return;
+      } catch (err) {
+        ultimoErro = err;
+      }
+    }
+
+    preview.innerHTML = `<div class="aviso">
+      Não foi possível iniciar esta câmera.<br>
+      <span style="font-size:11.5px">${ultimoErro?.name || ''}: ${ultimoErro?.message || ''}</span><br><br>
+      Feche outros programas que possam estar usando a webcam
+      (Teams, Zoom, OBS, app Câmera do Windows).
+    </div>`;
+    document.getElementById('btn-capturar').disabled = true;
+  }
+
+  function pararStream() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }
+
+  function capturar() {
+    const video = document.getElementById('video');
+    const canvas = document.createElement('canvas');
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    canvas.toBlob(blob => {
+      const nome = `foto_${Date.now()}.jpg`;
+      imagemSelecionada = { blob, nome };
+      mostrarNoPost(URL.createObjectURL(blob), nome);
+      fecharCameraBtn();
+    }, 'image/jpeg', 0.95);
+  }
+
+  function fecharCamera(e) {
+    if (e.target === document.getElementById('overlay-camera')) fecharCameraBtn();
+  }
+  function fecharCameraBtn() {
+    pararStream();
+    document.getElementById('overlay-camera').classList.remove('show');
   }
 
   // ── Verificação ────────────────────────────────────────────
@@ -466,7 +634,8 @@
     document.getElementById('overlay-resultado').classList.add('show');
 
     try {
-      const blob = await (await fetch(`${API}/drive/imagem/${imagemSelecionada.id}`)).blob();
+      const blob = imagemSelecionada.blob
+        ?? await (await fetch(`${API}/drive/imagem/${imagemSelecionada.id}`)).blob();
       const formData = new FormData();
       formData.append('file', blob, imagemSelecionada.nome);
 
@@ -498,6 +667,7 @@
     }
     window.location.href = 'index.html';
   });
-</script> 
+</script>
+
 </body>
 </html>
